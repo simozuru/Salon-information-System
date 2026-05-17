@@ -37,19 +37,23 @@
     <option>縮毛矯正 ¥18000</option>
   </select>
 
+  <!-- 【重要】onchangeを追加：スタイリストを変えたら時間を再計算 -->
   <label for="staff">スタイリスト</label>
-  <select id="staff">
+  <select id="staff" onchange="updateTimeSlots()">
     <option>指名なし</option>
     <option>下鶴</option>
     <option>来馬</option>
     <option>矢野</option>
   </select>
 
+  <!-- 【重要】onchangeを追加：日付を変えたら時間を再計算 -->
   <label for="date">ご希望日</label>
-  <input type="date" id="date">
+  <input type="date" id="date" onchange="updateTimeSlots()">
 
   <label for="time">ご希望時間</label>
-  <select id="time"></select>
+  <select id="time" disabled>
+    <option value="">日付とスタイリストを選んでください</option>
+  </select>
 
   <button id="submit-btn" onclick="sendReserve()">予約する</button>
 
@@ -57,32 +61,84 @@
 </div>
 
 <script>
-// 時間の選択肢を自動生成
+// GASのWebアプリURL（最新のURLに書き換えてください）
+const gasUrl = "https://script.google.com/macros/s/XXXXX_あなたの新しいGASのID_XXXXX/exec";
+
 window.onload = function(){
-  const timeSelect = document.getElementById("time");
-  for(let h=9; h<=18; h++){
-    for(let m=0; m<60; m+=30){
-      if(h==18 && m>0) continue;
-      const hh = ("0"+h).slice(-2);
-      const mm = ("0"+m).slice(-2);
-      const opt = document.createElement("option");
-      opt.value = hh + ":" + mm;
-      opt.textContent = hh + ":" + mm;
-      timeSelect.appendChild(opt);
-    }
-  }
-  
-  // 今日以降の日付しか選べないようにする（親切設計）
+  // 今日以降の日付しか選べないようにする
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('date').min = today;
 };
 
-// 予約送信処理
+// 【新機能】空き状況を考慮して時間選択肢を更新する関数
+async function updateTimeSlots() {
+  const staff = document.getElementById("staff").value;
+  const date = document.getElementById("date").value;
+  const timeSelect = document.getElementById("time");
+  const msgEl = document.getElementById("msg");
+
+  // 日付がまだ選ばれていない場合は処理しない
+  if (!date) {
+    timeSelect.disabled = true;
+    timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
+    return;
+  }
+
+  timeSelect.disabled = true;
+  timeSelect.innerHTML = '<option value="">空き状況を確認中...</option>';
+  msgEl.innerText = "";
+
+  try {
+    // GASのdoGetを呼び出して、予約済みリストを取得
+    const response = await fetch(`${gasUrl}?date=${date}&staff=${encodeURIComponent(staff)}`);
+    const data = await response.json();
+    const bookedTimes = data.bookedTimes || [];
+
+    // 時間の選択肢を再生成
+    timeSelect.innerHTML = "";
+    
+    let availableCount = 0;
+
+    for(let h=9; h<=18; h++){
+      for(let m=0; m<60; m+=30){
+        if(h==18 && m>0) continue;
+        const hh = ("0"+h).slice(-2);
+        const mm = ("0"+m).slice(-2);
+        const timeStr = hh + ":" + mm;
+
+        const opt = document.createElement("option");
+        opt.value = timeStr;
+
+        // もしGASから返ってきた「予約済みリスト」にこの時間が含まれていたら
+        if (bookedTimes.includes(timeStr)) {
+          opt.textContent = timeStr + " (× 予約済み)";
+          opt.disabled = true; // 選択できないようにする
+          opt.style.color = "#ccc";
+        } else {
+          opt.textContent = timeStr + " (◯ 空きあり)";
+          availableCount++;
+        }
+        timeSelect.appendChild(opt);
+      }
+    }
+
+    if(availableCount === 0) {
+      timeSelect.innerHTML = '<option value="">この日は満席です</option>';
+    } else {
+      timeSelect.disabled = false;
+    }
+
+  } catch (e) {
+    timeSelect.innerHTML = '<option value="">エラーが発生しました</option>';
+    msgEl.innerText = "時間データの取得に失敗しました。";
+  }
+}
+
+// 予約送信処理（前回とほぼ同じですが、完了時に時間を再更新するよう変更）
 async function sendReserve(){
   const msgEl = document.getElementById("msg");
   const btnEl = document.getElementById("submit-btn");
   
-  // 入力値の取得
   const name = document.getElementById("name").value.trim();
   const tel = document.getElementById("tel").value.trim();
   const menu = document.getElementById("menu").value;
@@ -90,21 +146,16 @@ async function sendReserve(){
   const date = document.getElementById("date").value;
   const time = document.getElementById("time").value;
 
-  if(!name || !tel || !date) {
+  if(!name || !tel || !date || !time) {
     msgEl.className = "";
-    msgEl.innerText = "名前、電話番号、日付を入力してください。";
+    msgEl.innerText = "すべての項目を正しく入力してください。";
     return;
   }
 
-  // ボタンを無効化して連打を防止
   btnEl.disabled = true;
   msgEl.className = "";
   msgEl.innerText = "予約処理中...";
 
-  // GASの新しいWebアプリURLに書き換えてください
-  const gasUrl = "https://script.google.com/macros/s/AKfycbyrhogaaB0ClOHUEgnx-ZnWv00gfLaFS37dlwslm0exZJ9yI7RJ1AFiDYn8UYT8Ldk_/exec";
-
-  // データを送るための準備
   const formData = new URLSearchParams();
   formData.append("name", name);
   formData.append("tel", tel);
@@ -114,13 +165,10 @@ async function sendReserve(){
   formData.append("time", time);
 
   try {
-    // GASにデータを送信
     const response = await fetch(gasUrl, {
       method: "POST",
       body: formData,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      }
+      headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
 
     const resultText = await response.text();
@@ -128,9 +176,10 @@ async function sendReserve(){
 
     if(resultText.includes("完了")) {
       msgEl.className = "success";
-      // 予約完了したら入力をクリア
       document.getElementById("name").value = "";
       document.getElementById("tel").value = "";
+      // 予約が完了したら、その場で即座に空き時間を再計算（×にする）
+      await updateTimeSlots();
     }
 
   } catch(e) {
