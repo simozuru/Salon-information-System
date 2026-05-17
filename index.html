@@ -70,14 +70,13 @@ window.onload = function(){
   document.getElementById('date').min = today;
 };
 
-// 【新機能】空き状況を考慮して時間選択肢を更新する関数
+// 【CORS対策版】空き状況を考慮して時間選択肢を更新する関数
 async function updateTimeSlots() {
   const staff = document.getElementById("staff").value;
   const date = document.getElementById("date").value;
   const timeSelect = document.getElementById("time");
   const msgEl = document.getElementById("msg");
 
-  // 日付がまだ選ばれていない場合は処理しない
   if (!date) {
     timeSelect.disabled = true;
     timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
@@ -89,14 +88,18 @@ async function updateTimeSlots() {
   msgEl.innerText = "";
 
   try {
-    // GASのdoGetを呼び出して、予約済みリストを取得
+    // GASのURLに日付と担当者をくっつけて通信
     const response = await fetch(`${gasUrl}?date=${date}&staff=${encodeURIComponent(staff)}`);
-    const data = await response.json();
+    
+    // 【変更】GASから一度テキスト（文字）として受け取る
+    const textData = await response.text();
+    
+    // 受け取った文字をJavaScriptのデータ（JSON）に変換する
+    const data = JSON.parse(textData);
     const bookedTimes = data.bookedTimes || [];
 
     // 時間の選択肢を再生成
     timeSelect.innerHTML = "";
-    
     let availableCount = 0;
 
     for(let h=9; h<=18; h++){
@@ -109,10 +112,9 @@ async function updateTimeSlots() {
         const opt = document.createElement("option");
         opt.value = timeStr;
 
-        // もしGASから返ってきた「予約済みリスト」にこの時間が含まれていたら
         if (bookedTimes.includes(timeStr)) {
           opt.textContent = timeStr + " (× 予約済み)";
-          opt.disabled = true; // 選択できないようにする
+          opt.disabled = true;
           opt.style.color = "#ccc";
         } else {
           opt.textContent = timeStr + " (◯ 空きあり)";
@@ -121,6 +123,19 @@ async function updateTimeSlots() {
         timeSelect.appendChild(opt);
       }
     }
+
+    if(availableCount === 0) {
+      timeSelect.innerHTML = '<option value="">この日は満席です</option>';
+    } else {
+      timeSelect.disabled = false;
+    }
+
+  } catch (e) {
+    console.error(e); // ブラウザのF12開発者ツールのコンソールにエラー詳細を出す
+    timeSelect.innerHTML = '<option value="">エラーが発生しました</option>';
+    msgEl.innerText = "時間データの取得に失敗しました。";
+  }
+}
 
     if(availableCount === 0) {
       timeSelect.innerHTML = '<option value="">この日は満席です</option>';
