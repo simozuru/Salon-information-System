@@ -50,15 +50,40 @@
 </div>
 
 <script>
-// 【重要】最新のGASのWebアプリURLに書き換えてください
-const gasUrl = "https://script.google.com/macros/s/AKfycbxFjZku3VpVlymoFU9OExXLEe3NLBXpF5mZJtG-zQrtX3dg0drOC0tzmnlR5ar8xNK2/exec";
+// 【重要】あなたの最新のGASのURLに書き換えてください
+const gasUrl = "https://script.google.com/macros/s/AKfycbw2CzltrYxvYOgQl8F0TSaUA2WTCVjBnNJQrSXPYkz3tHww2_ElWYMND9gB8yJuQzpg/exec";
 
 window.onload = function(){
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('date').min = today;
 };
 
-// --- ここから「updateTimeSlots」関数の入れ替え範囲 ---
+// 【最終兵器】CORSを完全に回避するJSONP関数
+function requestJSONP(url) {
+  return new Promise((resolve, reject) => {
+    const callbackName = 'jsonp_cb_' + Math.round(100000 * Math.random());
+    const script = document.createElement('script');
+    
+    window[callbackName] = function(data) {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+
+    script.onerror = () => {
+      delete window[callbackName];
+      document.body.removeChild(script);
+      reject(new Error('通信エラーが発生しました'));
+    };
+
+    // URLにcallbackパラメータを付与
+    const sep = url.indexOf('?') === -1 ? '?' : '&';
+    script.src = url + sep + 'callback=' + callbackName;
+    document.body.appendChild(script);
+  });
+}
+
+// 空き状況を考慮して時間選択肢を更新する関数
 async function updateTimeSlots() {
   const staff = document.getElementById("staff").value;
   const date = document.getElementById("date").value;
@@ -76,26 +101,11 @@ async function updateTimeSlots() {
   msgEl.innerText = "";
 
   try {
+    // fetchの代わりにJSONPを使用
     const fullUrl = `${gasUrl}?date=${date}&staff=${encodeURIComponent(staff)}`;
+    const data = await requestJSONP(fullUrl);
     
-    // 通信設定を安定化 (CORS対策の奥の手)
-    const response = await fetch(fullUrl, {
-      method: 'GET',
-      mode: 'cors',
-      redirect: 'follow',
-    });
-
-    const textData = await response.text();
-    
-    // データが届いているかチェック
-    if (!textData || !textData.includes("bookedTimes")) {
-        throw new Error("データの受信に失敗しました");
-    }
-
-    const data = JSON.parse(textData);
     const bookedTimes = data.bookedTimes || [];
-
-    // 重複した時間枠を1つにまとめる
     const uniqueBookedTimes = [...new Set(bookedTimes)];
 
     timeSelect.innerHTML = "";
@@ -127,23 +137,20 @@ async function updateTimeSlots() {
       timeSelect.innerHTML = '<option value="">この日は満席です</option>';
     } else {
       timeSelect.disabled = false;
-      msgEl.innerText = ""; 
     }
 
   } catch (e) {
-    console.error("エラー:", e);
-    // すでにデータが見えている場合は「失敗」を表示させない工夫
-    if(timeSelect.innerHTML.includes("空きあり")) return;
-    
+    console.error(e);
     timeSelect.innerHTML = '<option value="">エラーが発生しました</option>';
-    msgEl.innerText = "時間データの取得に失敗しました。";
+    msgEl.innerText = "データの取得に失敗しました。";
   }
 }
-// --- ここまでが入れ替え範囲 ---
 
+// 予約送信処理
 async function sendReserve(){
   const msgEl = document.getElementById("msg");
   const btnEl = document.getElementById("submit-btn");
+  
   const name = document.getElementById("name").value.trim();
   const tel = document.getElementById("tel").value.trim();
   const menu = document.getElementById("menu").value;
@@ -152,8 +159,7 @@ async function sendReserve(){
   const time = document.getElementById("time").value;
 
   if(!name || !tel || !date || !time) {
-    msgEl.className = "";
-    msgEl.innerText = "すべての項目を正しく入力してください。";
+    msgEl.innerText = "すべての項目を入力してください。";
     return;
   }
 
@@ -170,13 +176,16 @@ async function sendReserve(){
   formData.append("time", time);
 
   try {
+    // 送信（POST）はfetchのままでOK（データが送れればよいため）
     const response = await fetch(gasUrl, {
       method: "POST",
       body: formData,
       headers: { "Content-Type": "application/x-www-form-urlencoded" }
     });
+
     const resultText = await response.text();
     msgEl.innerText = resultText;
+
     if(resultText.includes("完了")) {
       msgEl.className = "success";
       document.getElementById("name").value = "";
@@ -184,8 +193,7 @@ async function sendReserve(){
       await updateTimeSlots();
     }
   } catch(e) {
-    msgEl.className = "";
-    msgEl.innerText = "通信エラーが発生しました。";
+    msgEl.innerText = "送信エラーが発生しました。";
   } finally {
     btnEl.disabled = false;
   }
