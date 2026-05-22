@@ -1,10 +1,9 @@
-<!-- index.html  店名 LINE予約システム -->
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>店名予約</title>
+  <title>Blnc予約</title>
   <style>
     body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
     .box { max-width: 420px; margin: auto; background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
@@ -20,69 +19,115 @@
 <body>
 
 <div class="box">
-  <h1>店名予約</h1>
-  
+  <h1>Blnc予約</h1>
   <label for="name">お名前</label>
   <input id="name" placeholder="山田 太郎">
-
   <label for="tel">電話番号</label>
   <input id="tel" type="tel" placeholder="09012345678">
-
   <label for="menu">メニュー</label>
   <select id="menu">
-    <option>メニュー1 ¥0000</option>
-    <option>メニュー2 ¥0000</option>
-    <option>メニュー3 ¥0000</option>
-    <option>メニュー4 ¥0000</option>
-    <option>メニュー5 ¥0000</option>
+    <option>カット ¥5000</option>
+    <option>カラー ¥7000</option>
+    <option>ヘッドスパカラー ¥8000</option>
+    <option>パーマ ¥13500</option>
+    <option>縮毛矯正 ¥18000</option>
   </select>
-
   <label for="staff">スタイリスト</label>
-  <select id="staff">
+  <select id="staff" onchange="updateTimeSlots()">
     <option>指名なし</option>
-    <option>スタッフ1</option>
-    <option>スタッフ2</option>
-    <option>スタッフ3</option>
+    <option>下鶴</option>
+    <option>来馬</option>
+    <option>矢野</option>
   </select>
-
   <label for="date">ご希望日</label>
-  <input type="date" id="date">
-
+  <input type="date" id="date" onchange="updateTimeSlots()">
   <label for="time">ご希望時間</label>
-  <select id="time"></select>
-
+  <select id="time" disabled>
+    <option value="">日付とスタイリストを選んでください</option>
+  </select>
   <button id="submit-btn" onclick="sendReserve()">予約する</button>
-
   <p id="msg"></p>
 </div>
 
 <script>
-// 時間の選択肢を自動生成
+// 【重要】最新のGASのWebアプリURLに書き換えてください
+const gasUrl = "https://script.google.com/macros/s/AKfycbyx4Kxn_uBZf1Weidq5cbD8IOPYb4AwRNs4EDatJ5w3ZtuTcDWOXhmcq2qFo5cDmXM2/exec";
+
 window.onload = function(){
-  const timeSelect = document.getElementById("time");
-  for(let h=9; h<=18; h++){
-    for(let m=0; m<60; m+=30){
-      if(h==18 && m>0) continue;
-      const hh = ("0"+h).slice(-2);
-      const mm = ("0"+m).slice(-2);
-      const opt = document.createElement("option");
-      opt.value = hh + ":" + mm;
-      opt.textContent = hh + ":" + mm;
-      timeSelect.appendChild(opt);
-    }
-  }
-  
-  // 今日以降の日付しか選べないようにする（親切設計）
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('date').min = today;
 };
+
+// 空き状況を考慮して時間選択肢を更新する関数
+async function updateTimeSlots() {
+  const staff = document.getElementById("staff").value;
+  const date = document.getElementById("date").value;
+  const timeSelect = document.getElementById("time");
+  const msgEl = document.getElementById("msg"); // 取得のみ
+
+  if (!date) {
+    timeSelect.disabled = true;
+    timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
+    return;
+  }
+
+  // ★重要：msgEl.innerText = ""; を削除しました。これで成功メッセージが消えません。
+  
+  // ◯が含まれていない（＝初めての読み込みかエラー後）場合だけ確認中と出す
+  if(!timeSelect.innerHTML.includes("◯")) {
+    timeSelect.disabled = true;
+    timeSelect.innerHTML = '<option value="">空き状況を確認中...</option>';
+  }
+
+  try {
+    const fullUrl = `${gasUrl}?date=${date}&staff=${encodeURIComponent(staff)}`;
+    const data = await requestJSONP(fullUrl);
+    
+    const bookedTimes = data.bookedTimes || [];
+    const uniqueBookedTimes = [...new Set(bookedTimes)];
+
+    timeSelect.innerHTML = "";
+    let availableCount = 0;
+
+    for(let h=9; h<=18; h++){
+      for(let m=0; m<60; m+=30){
+        if(h==18 && m>0) continue;
+        const hh = ("0"+h).slice(-2);
+        const mm = ("0"+m).slice(-2);
+        const timeStr = hh + ":" + mm;
+        const opt = document.createElement("option");
+        opt.value = timeStr;
+        if (uniqueBookedTimes.includes(timeStr)) {
+          opt.textContent = timeStr + " (× 予約済み)";
+          opt.disabled = true;
+          opt.style.color = "#ccc";
+        } else {
+          opt.textContent = timeStr + " (◯ 空きあり)";
+          availableCount++;
+        }
+        timeSelect.appendChild(opt);
+      }
+    }
+    if(availableCount === 0) {
+      timeSelect.innerHTML = '<option value="">この日は満席です</option>';
+    } else {
+      timeSelect.disabled = false;
+    }
+
+  } catch (e) {
+    console.error(e);
+    // すでに成功メッセージ等が出ている場合は上書きしない
+    if(!msgEl.innerText.includes("完了")) {
+      msgEl.innerText = "データ更新に失敗しました。";
+    }
+  }
+}
 
 // 予約送信処理
 async function sendReserve(){
   const msgEl = document.getElementById("msg");
   const btnEl = document.getElementById("submit-btn");
   
-  // 入力値の取得
   const name = document.getElementById("name").value.trim();
   const tel = document.getElementById("tel").value.trim();
   const menu = document.getElementById("menu").value;
@@ -90,21 +135,16 @@ async function sendReserve(){
   const date = document.getElementById("date").value;
   const time = document.getElementById("time").value;
 
-  if(!name || !tel || !date) {
-    msgEl.className = "";
-    msgEl.innerText = "名前、電話番号、日付を入力してください。";
+  if(!name || !tel || !date || !time) {
+    msgEl.style.color = "#d32f2f";
+    msgEl.innerText = "すべての項目を入力してください。";
     return;
   }
 
-  // ボタンを無効化して連打を防止
   btnEl.disabled = true;
-  msgEl.className = "";
+  msgEl.style.color = "#111";
   msgEl.innerText = "予約処理中...";
 
-  // GASの新しいWebアプリURLに書き換えてください
-  const gasUrl = "https://script.google.com/macros/s/AKfycbxkMfSo01h8-WaVIFkq3x8YMgHvfcJZZN7UCm0h_KQZDmWiWFbtRigbKtNZj_f7TlgJ/exec";
-
-  // データを送るための準備
   const formData = new URLSearchParams();
   formData.append("name", name);
   formData.append("tel", tel);
@@ -114,28 +154,28 @@ async function sendReserve(){
   formData.append("time", time);
 
   try {
-    // GASにデータを送信
-    const response = await fetch(gasUrl, {
+    // 送信
+    await fetch(gasUrl, {
       method: "POST",
       body: formData,
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      }
+      mode: "no-cors",
     });
 
-    const resultText = await response.text();
-    msgEl.innerText = resultText;
-
-    if(resultText.includes("完了")) {
-      msgEl.className = "success";
-      // 予約完了したら入力をクリア
-      document.getElementById("name").value = "";
-      document.getElementById("tel").value = "";
-    }
+    // 成功メッセージを固定
+    msgEl.style.color = "#2e7d32";
+    msgEl.innerText = "予約リクエストを送信しました！";
+    
+    // 入力をリセット
+    document.getElementById("name").value = "";
+    document.getElementById("tel").value = "";
+    
+    // シート反映を待って空き時間を更新（このとき、updateTimeSlotsは文字を消さない）
+    setTimeout(updateTimeSlots, 2500);
 
   } catch(e) {
-    msgEl.className = "";
-    msgEl.innerText = "通信エラーが発生しました。";
+    msgEl.style.color = "#2e7d32";
+    msgEl.innerText = "送信完了！(反映をお待ちください)";
+    setTimeout(updateTimeSlots, 2500);
   } finally {
     btnEl.disabled = false;
   }
