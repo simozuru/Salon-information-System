@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 2.9</title>
+  <title>SIS Web Reservation - ver 3.0</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -35,7 +35,7 @@
 
 <div class="container">
   <h1>ヘアサロン Blnc</h1>
-  <div class="subtitle">WEB予約システム (SIS prototype ver 2.9)</div>
+  <div class="subtitle">WEB予約システム (SIS prototype ver 3.0)</div>
   
   <form id="reservationForm">
     <div class="form-group">
@@ -189,8 +189,7 @@
           });
         }
 
-        // 💡【修正ポイント】「終日チェックが入っている（＝すべてのコマのブロック理由が最初から同一）」場合のみ1行案内を出す
-        // メニューの施術時間が長くて枠が足りなくなっただけの場合は、blockReasons.lengthがtotalSlotsCount（全コマ数）と一致しないため、ここはスルーして通常展開に進みます
+        // 1. 【終日チェックが入っている最初からのブロック時】の1行案内
         const isAllDayBlockedFromBeginning = data.unavailableTimes.length >= totalSlotsCount;
         const allSameReason = isAllDayBlockedFromBeginning && data.unavailableTimes.every(t => t.split('|')[1] === data.unavailableTimes[0].split('|')[1]);
 
@@ -202,7 +201,6 @@
 
           const mainReason = data.unavailableTimes[0].split('|')[1];
 
-          // 💡講習の場合にもスタッフ名【 ${staff} 】を綺麗に挿入
           if (mainReason === "公休") {
             opt.textContent = `【 ${staff} 】は本日公休をいただいております`;
           } else if (mainReason === "勉強会のため予約は受け付けしていません") {
@@ -218,13 +216,12 @@
           return;
         }
 
-        // 3. 通常の30分刻み展開（選べる枠がある場合、またはメニューの長さで満席になった場合）
+        // 2. 通常の30分刻み展開
         slotResults.forEach(slot => {
           const opt = document.createElement('option');
           opt.value = slot.time;
 
           if (!slot.available) {
-            // メニュー選択で埋まった箇所も含め、各コマの理由（× 満席 や × 半休）を表示
             opt.textContent = `${slot.time} (× ${slot.reason})`;
             opt.disabled = true;
           } else {
@@ -233,7 +230,16 @@
           timeSelect.appendChild(opt);
         });
 
-        // 1つでも選べる（○）枠があればボタンを活性化、なければロック
+        // 💡【修正ポイント】選べる枠が1つもない（メニューの長さで埋まった）場合、先頭に「満席案内」を差し込む
+        if (!hasAvailableSlot) {
+          const noticeOpt = document.createElement('option');
+          noticeOpt.value = "";
+          noticeOpt.textContent = "本日はすべての時間帯で満席となっております";
+          noticeOpt.selected = true;
+          noticeOpt.disabled = true;
+          timeSelect.insertBefore(noticeOpt, timeSelect.firstChild);
+        }
+
         submitBtn.disabled = !hasAvailableSlot;
 
       } else {
