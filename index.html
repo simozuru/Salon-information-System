@@ -229,3 +229,67 @@
               hasAvailableSlot = true;
             }
             timeSelect.appendChild(opt);
+          });
+        }
+
+        submitBtn.disabled = !hasAvailableSlot;
+
+      } else {
+        timeSelect.innerHTML = '<option value="">エラーが発生しました</option>';
+      }
+    } catch (error) {
+      console.error(error);
+      timeSelect.innerHTML = '<option value="">通信エラーが発生しました</option>';
+    }
+  }
+
+  // 予約確定処理
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    submitBtn.disabled = true;
+    loading.style.display = 'block';
+
+    // 送信直前に入力内容をローカルストレージにキャッシュ保存
+    const fields = ['name', 'name_kana', 'tel', 'email', 'birthday'];
+    fields.forEach(field => {
+      localStorage.setItem(`sis_${field}`, document.getElementById(field).value);
+    });
+
+    const formData = new URLSearchParams();
+    formData.append('date', dateInput.value);
+    formData.append('time', timeSelect.value);
+    formData.append('staff', staffSelect.value);
+    formData.append('menu', menuSelect.value);
+    formData.append('name', document.getElementById('name').value);
+    formData.append('name_kana', document.getElementById('name_kana').value);
+    formData.append('tel', document.getElementById('tel').value);
+    formData.append('email', document.getElementById('email').value);
+    formData.append('birthday', document.getElementById('birthday').value);
+    formData.append('memo', document.getElementById('memo').value);
+
+    try {
+      const response = await fetch(GAS_WEB_APP_URL, {
+        method: 'POST',
+        body: formData,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        alert('ご予約が完了しました！確定メールをご確認ください。');
+        form.reset();
+        timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
+      } else {
+        alert('予約に失敗しました: ' + data.message);
+        submitBtn.disabled = false;
+      }
+    } catch (error) {
+      alert('通信エラーが発生しました。');
+      submitBtn.disabled = false;
+    } finally {
+      loading.style.display = 'none';
+    }
+  });
+</script>
+
+</body>
+</html>
