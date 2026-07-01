@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 2.8</title>
+  <title>SIS Web Reservation - ver 2.9</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -35,7 +35,7 @@
 
 <div class="container">
   <h1>ヘアサロン Blnc</h1>
-  <div class="subtitle">WEB予約システム (SIS prototype ver 2.8)</div>
+  <div class="subtitle">WEB予約システム (SIS prototype ver 2.9)</div>
   
   <form id="reservationForm">
     <div class="form-group">
@@ -164,15 +164,16 @@
           return;
         }
 
-        // 1. 各時間枠のデータを一時的に配列に集める
         const slotResults = [];
         let hasAvailableSlot = false;
         let detectedReasons = [];
+        let totalSlotsCount = 0;
 
         for (let h = 9; h < 19; h++) {
           const hours = String(h).padStart(2, '0');
           ['00', '30'].forEach(m => {
             const timeStr = `${hours}:${m}`;
+            totalSlotsCount++;
             const matchHoliday = data.unavailableTimes.find(t => t.startsWith(timeStr));
 
             if (matchHoliday) {
@@ -188,37 +189,42 @@
           });
         }
 
-        // 2. 【新・判定ロジック】もし選べる枠が「1つも無い」場合
-        if (!hasAvailableSlot) {
+        // 💡【修正ポイント】「終日チェックが入っている（＝すべてのコマのブロック理由が最初から同一）」場合のみ1行案内を出す
+        // メニューの施術時間が長くて枠が足りなくなっただけの場合は、blockReasons.lengthがtotalSlotsCount（全コマ数）と一致しないため、ここはスルーして通常展開に進みます
+        const isAllDayBlockedFromBeginning = data.unavailableTimes.length >= totalSlotsCount;
+        const allSameReason = isAllDayBlockedFromBeginning && data.unavailableTimes.every(t => t.split('|')[1] === data.unavailableTimes[0].split('|')[1]);
+
+        if (allSameReason) {
           const opt = document.createElement('option');
           opt.value = "";
           opt.disabled = true;
           opt.selected = true;
 
-          // 代表的な理由を1つ取得
-          const mainReason = detectedReasons[0] || "満席";
+          const mainReason = data.unavailableTimes[0].split('|')[1];
 
+          // 💡講習の場合にもスタッフ名【 ${staff} 】を綺麗に挿入
           if (mainReason === "公休") {
             opt.textContent = `【 ${staff} 】は本日公休をいただいております`;
           } else if (mainReason === "勉強会のため予約は受け付けしていません") {
-            opt.textContent = `本日は勉強会のため終日ご予約を受け付けておりません`;
+            opt.textContent = `【 ${staff} 】は本日勉強会のため終日ご予約を受け付けておりません`;
           } else if (mainReason === "満席") {
             opt.textContent = `本日はすべての時間帯で満席となっております`;
           } else {
-            opt.textContent = `本日はお休みをいただいております (${mainReason})`;
+            opt.textContent = `【 ${staff} 】は本日お休みをいただいております (${mainReason})`;
           }
 
           timeSelect.appendChild(opt);
           submitBtn.disabled = true;
-          return; // ここで終了
+          return;
         }
 
-        // 3. 選べる枠がある（または半休など一部だけ埋まっている）場合は、通常通り30分刻みで展開
+        // 3. 通常の30分刻み展開（選べる枠がある場合、またはメニューの長さで満席になった場合）
         slotResults.forEach(slot => {
           const opt = document.createElement('option');
           opt.value = slot.time;
 
           if (!slot.available) {
+            // メニュー選択で埋まった箇所も含め、各コマの理由（× 満席 や × 半休）を表示
             opt.textContent = `${slot.time} (× ${slot.reason})`;
             opt.disabled = true;
           } else {
@@ -227,7 +233,8 @@
           timeSelect.appendChild(opt);
         });
 
-        submitBtn.disabled = false;
+        // 1つでも選べる（○）枠があればボタンを活性化、なければロック
+        submitBtn.disabled = !hasAvailableSlot;
 
       } else {
         timeSelect.innerHTML = '<option value="">エラーが発生しました</option>';
