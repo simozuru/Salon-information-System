@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.1</title>
+  <title>SIS Web Reservation - ver 3.0</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -35,7 +35,7 @@
 
 <div class="container">
   <h1>ヘアサロン Blnc</h1>
-  <div class="subtitle">WEB予約システム (SIS prototype ver 3.1)</div>
+  <div class="subtitle">WEB予約システム (SIS prototype ver 3.0)</div>
   
   <form id="reservationForm">
     <div class="form-group">
@@ -166,20 +166,22 @@
 
         const slotResults = [];
         let hasAvailableSlot = false;
+        let detectedReasons = [];
         let totalSlotsCount = 0;
 
-        // 元の安定版と完全に同一のループ展開（9:00 〜 18:30）
         for (let h = 9; h < 19; h++) {
           const hours = String(h).padStart(2, '0');
           ['00', '30'].forEach(m => {
             const timeStr = `${hours}:${m}`;
             totalSlotsCount++;
-            
             const matchHoliday = data.unavailableTimes.find(t => t.startsWith(timeStr));
 
             if (matchHoliday) {
               const reason = matchHoliday.split('|')[1] || "受付不可";
               slotResults.push({ time: timeStr, available: false, reason: reason });
+              if (!detectedReasons.includes(reason)) {
+                detectedReasons.push(reason);
+              }
             } else {
               slotResults.push({ time: timeStr, available: true, reason: "" });
               hasAvailableSlot = true;
@@ -187,7 +189,7 @@
           });
         }
 
-        // 終日ブロックの判定案内
+        // 1. 【終日チェックが入っている最初からのブロック時】の1行案内
         const isAllDayBlockedFromBeginning = data.unavailableTimes.length >= totalSlotsCount;
         const allSameReason = isAllDayBlockedFromBeginning && data.unavailableTimes.every(t => t.split('|')[1] === data.unavailableTimes[0].split('|')[1]);
 
@@ -214,7 +216,7 @@
           return;
         }
 
-        // 30分刻みのプルダウン展開
+        // 2. 通常の30分刻み展開
         slotResults.forEach(slot => {
           const opt = document.createElement('option');
           opt.value = slot.time;
@@ -228,6 +230,7 @@
           timeSelect.appendChild(opt);
         });
 
+        // 💡【修正ポイント】選べる枠が1つもない（メニューの長さで埋まった）場合、先頭に「満席案内」を差し込む
         if (!hasAvailableSlot) {
           const noticeOpt = document.createElement('option');
           noticeOpt.value = "";
