@@ -168,27 +168,21 @@
         let hasAvailableSlot = false;
         let totalSlotsCount = 0;
 
-        // 9:00 から 18:30 までのコマを生成して判定
+        // 元の安定版と完全に同一のループ展開（9:00 〜 18:30）
         for (let h = 9; h < 19; h++) {
           const hours = String(h).padStart(2, '0');
           ['00', '30'].forEach(m => {
             const timeStr = `${hours}:${m}`;
             totalSlotsCount++;
             
-            // GASから明示的にNG理由（営業時間外、予約あり等）が返ってきているか探す
             const matchHoliday = data.unavailableTimes.find(t => t.startsWith(timeStr));
 
             if (matchHoliday) {
               const reason = matchHoliday.split('|')[1] || "受付不可";
               slotResults.push({ time: timeStr, available: false, reason: reason });
             } else {
-              // ⚠️ GASのリストに無く、かつ18時閉店以降の時間（18:00, 18:30）の場合は強制的に営業時間外にする
-              if (h >= 18) {
-                slotResults.push({ time: timeStr, available: false, reason: "営業時間外" });
-              } else {
-                slotResults.push({ time: timeStr, available: true, reason: "" });
-                hasAvailableSlot = true;
-              }
+              slotResults.push({ time: timeStr, available: true, reason: "" });
+              hasAvailableSlot = true;
             }
           });
         }
