@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.0</title>
+  <title>SIS Web Reservation - ver 2.1</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -19,245 +19,199 @@
     h1 { font-size: 24px; text-align: center; margin-bottom: 5px; color: var(--primary-color); letter-spacing: 1px; }
     .subtitle { text-align: center; font-size: 13px; color: #888; margin-bottom: 30px; }
     .form-group { margin-bottom: 20px; }
-    label { display: block; font-size: 14px; font-weight: bold; margin-bottom: 8px; color: var(--primary-color); }
-    input, select, textarea { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 15px; transition: all 0.3s; background-color: #fff; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-color); box-shadow: 0 0 5px rgba(154,136,115,0.3); }
-    .row { display: flex; gap: 15px; }
-    .row .form-group { flex: 1; }
-    textarea { resize: vertical; height: 80px; }
-    button { width: 100%; padding: 15px; background-color: var(--accent-color); border: none; border-radius: 6px; color: white; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; margin-top: 10px; }
-    button:hover { background-color: #837362; }
-    button:disabled { background-color: #ccc; cursor: not-allowed; }
-    #loading { display: none; text-align: center; color: var(--accent-color); font-weight: bold; margin-top: 15px; font-size: 14px; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; font-size: 14px; color: var(--primary-color); }
+    input[type="text"], input[type="tel"], input[type="email"], input[type="date"], select, textarea {
+      width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 15px; background-color: #fff; transition: border-color 0.2s;
+    }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent-color); }
+    textarea { resize: vertical; min-height: 80px; }
+    .btn-submit {
+      width: 100%; padding: 15px; background-color: var(--accent-color); color: white; border: none; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background-color 0.2s; margin-top: 10px;
+    }
+    .btn-submit:hover { background-color: #857461; }
+    .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; }
+    .note { font-size: 12px; color: #666; margin-top: 5px; }
   </style>
 </head>
 <body>
 
 <div class="container">
-  <h1>ヘアサロン Blnc</h1>
-  <div class="subtitle">WEB予約システム (SIS prototype ver 3.0)</div>
-  
-  <form id="reservationForm">
+  <h1>SIS WEB RESERVATION</h1>
+  <div class="subtitle">サロン予約システム (Version 2.1 可変スロット対応版)</div>
+
+  <form id="reservation-form">
     <div class="form-group">
-      <label for="date">ご来店希望日</label>
+      <label for="date">ご来店希望日 *</label>
       <input type="date" id="date" required>
     </div>
 
-    <div class="row">
-      <div class="form-group">
-        <label for="staff">担当スタイリスト</label>
-        <select id="staff" required>
-          <option value="指名なし">指名なし（自動割り振り）</option>
-          <option value="下鶴">下鶴</option>
-          <option value="来馬">来馬</option>
-          <option value="矢野">矢野</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="menu">メニュー</label>
-        <select id="menu" required>
-          <option value="カット">カット (60分)</option>
-          <option value="カラー">カラー (120分)</option>
-          <option value="パーマ">パーマ (120分)</option>
-          <option value="縮毛矯正">縮毛矯正 (240分)</option>
-        </select>
-      </div>
+    <div class="form-group">
+      <label for="staff">担当スタッフ *</label>
+      <select id="staff" required>
+        <option value="指名なし">指名なし (店舗全体の空き状況)</option>
+        <option value="下鶴">下鶴</option>
+        <option value="来馬">来馬</option>
+        <option value="矢野">矢野</option>
+      </select>
     </div>
 
     <div class="form-group">
-      <label for="time">ご希望時間</label>
-      <select id="time" required>
+      <label for="menu">施術メニュー *</label>
+      <select id="menu" required>
+        <option value="">メニューを選択してください</option>
+        <option value="カット">カット</option>
+        <option value="カラー">カラー</option>
+        <option value="パーマ">パーマ</option>
+        <option value="縮毛矯正">縮毛矯正</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="time">ご来店希望時間 *</label>
+      <select id="time" required disabled>
         <option value="">日付を選択してください</option>
       </select>
     </div>
 
-    <hr style="border: 0; border-top: 1px dashed var(--border-color); margin: 25px 0;">
+    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 30px 0;">
 
-    <div class="row">
-      <div class="form-group">
-        <label for="name">お名前（氏名）</label>
-        <input type="text" id="name" placeholder="山田 太郎" required>
-      </div>
-      <div class="form-group">
-        <label for="name_kana">フリガナ</label>
-        <input type="text" id="name_kana" placeholder="ヤマダ タロウ" required>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="form-group">
-        <label for="tel">電話番号</label>
-        <input type="tel" id="tel" placeholder="09012345678" required>
-      </div>
-      <div class="form-group">
-        <label for="birthday">誕生日（任意）</label>
-        <input type="date" id="birthday">
-      </div>
+    <div class="form-group">
+      <label for="name">お名前 (漢字) *</label>
+      <input type="text" id="name" required placeholder="山田 太郎">
     </div>
 
     <div class="form-group">
-      <label for="email">メールアドレス</label>
-      <input type="email" id="email" placeholder="example@mail.com" required>
+      <label for="name_kana">お名前 (フリガナ) *</label>
+      <input type="text" id="name_kana" required placeholder="ヤマダ タロウ">
     </div>
 
     <div class="form-group">
-      <label for="memo">ご要望・サロンへのメッセージ</label>
-      <textarea id="memo" placeholder="髪の悩みや、当日伝えたいことがあればご記入ください。"></textarea>
+      <label for="tel">携帯電話番号 *</label>
+      <input type="tel" id="tel" required placeholder="09012345678" pattern="^[0-9\-]+$">
+      <div class="note">ハイフンはあってもなくても構いません</div>
     </div>
 
-    <button type="submit" id="submitBtn">予約を確定する</button>
-    <div id="loading">処理中... しばらくお待ちください</div>
+    <div class="form-group">
+      <label for="email">メールアドレス *</label>
+      <input type="email" id="email" required placeholder="example@gmail.com">
+      <div class="note">予約確定メールが届きますので、正しくご入力ください</div>
+    </div>
+
+    <div class="form-group">
+      <label for="birthday">生年月日</label>
+      <input type="date" id="birthday">
+    </div>
+
+    <div class="form-group">
+      <label for="memo">ご要望・備考</label>
+      <textarea id="memo" placeholder="髪型のご相談や、お急ぎの時間などがあればご記入ください"></textarea>
+    </div>
+
+    <button type="submit" id="submit-btn" class="btn-submit" disabled>上記の内容で予約を確定する</button>
   </form>
 </div>
 
 <script>
-  // ★ここに新しいGASのウェブアプリURLを貼り付けてください★
-  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxbFV32iBQaa7wwQakiCZZGp0gyh8RoC7jHWKSVvTFLxl1ufJu_LNiVmTdpq5IBqs3O/exec";
+  // 💡 あなたのデプロイした最新の「WebアプリURL」に書き換えてください
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxiQeuqvBTLOgwj8fCHUihRfUxRVOi8ft__D88ulTbU0bI2uVCImUbL89UgrM2pH7JV/exec";
 
+  const form = document.getElementById('reservation-form');
   const dateInput = document.getElementById('date');
   const staffSelect = document.getElementById('staff');
   const menuSelect = document.getElementById('menu');
   const timeSelect = document.getElementById('time');
-  const form = document.getElementById('reservationForm');
-  const submitBtn = document.getElementById('submitBtn');
-  const loading = document.getElementById('loading');
+  const submitBtn = document.getElementById('submit-btn');
 
-  // キャッシュ復元
-  window.addEventListener('DOMContentLoaded', () => {
-    const fields = ['name', 'name_kana', 'tel', 'email', 'birthday'];
-    fields.forEach(field => {
-      const savedValue = localStorage.getItem(`sis_${field}`);
-      if (savedValue) {
-        document.getElementById(field).value = savedValue;
-      }
-    });
-  });
-
+  // 本日以降しか選択できないように制御
   const today = new Date().toISOString().split('T')[0];
   dateInput.min = today;
 
-  [dateInput, staffSelect, menuSelect].forEach(element => {
-    element.addEventListener('change', fetchAvailableTimes);
+  // 入力保存用フィールド
+  const storageFields = ['name', 'name_kana', 'tel', 'email', 'birthday'];
+  storageFields.forEach(field => {
+    const saved = localStorage.getItem(`sis_${field}`);
+    if (saved) document.getElementById(field).value = saved;
   });
 
-  async function fetchAvailableTimes() {
-    const date = dateInput.value;
-    const staff = staffSelect.value;
-    const menu = menuSelect.value;
+  // 日付・スタッフ・メニューが変更されたら時間を再計算する
+  [dateInput, staffSelect, menuSelect].forEach(element => {
+    element.addEventListener('change', updateAvailableTimes);
+  });
 
-    if (!date) return;
+  /**
+   * 💡 【Version 2.1 大改造】表示時間枠とNG枠をダブルで取得し、ボタンを自動生成する
+   */
+  async function updateAvailableTimes() {
+    const dateVal = dateInput.value;
+    const staffVal = staffSelect.value;
+    const menuVal = menuSelect.value;
 
-    timeSelect.innerHTML = '<option value="">空き時間を計算中...</option>';
+    // 必須項目が揃っていなければ時間選択をロック
+    if (!dateVal || !staffVal || !menuVal) {
+      timeSelect.disabled = true;
+      timeSelect.innerHTML = '<option value="">日時とメニューを選択してください</option>';
+      submitBtn.disabled = true;
+      return;
+    }
+
+    timeSelect.disabled = true;
+    timeSelect.innerHTML = '<option value="">空き状況を確認中...</option>';
     submitBtn.disabled = true;
 
     try {
-      const url = `${GAS_WEB_APP_URL}?method=getUnavailable&date=${date}&staff=${encodeURIComponent(staff)}&menu=${encodeURIComponent(menu)}`;
-      const response = await fetch(url);
-      const data = await response.json();
+      // API 1: 【完全新設】お店の設定に追従した「表示用のベース時間枠リスト」を取得
+      const slotsResponse = await fetch(`${GAS_WEB_APP_URL}?method=getDisplaySlots&date=${dateVal}`);
+      if (!slotsResponse.ok) throw new Error('時間マスタの取得に失敗しました');
+      const displaySlots = await slotsResponse.json();
 
-      if (data.success) {
-        timeSelect.innerHTML = '';
-        
-        if (data.isShopHoliday) {
-          timeSelect.innerHTML = '<option value="">本日は定休日（または特別休業日）です</option>';
-          submitBtn.disabled = true;
-          return;
-        }
+      // API 2: すでにカレンダーが埋まっていて予約不可能な「NG時間枠リスト」を取得
+      const unavResponse = await fetch(`${GAS_WEB_APP_URL}?method=getUnavailableTimes&date=${dateVal}&staff=${encodeURIComponent(staffVal)}&menu=${encodeURIComponent(menuVal)}`);
+      if (!unavResponse.ok) throw new Error('空き枠データの取得に失敗しました');
+      const unavailableTimes = await unavResponse.json();
 
-        const slotResults = [];
-        let hasAvailableSlot = false;
-        let detectedReasons = [];
-        let totalSlotsCount = 0;
+      // 選択ボックスをリセット
+      timeSelect.innerHTML = '<option value="">時間を選択してください</option>';
 
-        for (let h = 9; h < 19; h++) {
-          const hours = String(h).padStart(2, '0');
-          ['00', '30'].forEach(m => {
-            const timeStr = `${hours}:${m}`;
-            totalSlotsCount++;
-            const matchHoliday = data.unavailableTimes.find(t => t.startsWith(timeStr));
-
-            if (matchHoliday) {
-              const reason = matchHoliday.split('|')[1] || "受付不可";
-              slotResults.push({ time: timeStr, available: false, reason: reason });
-              if (!detectedReasons.includes(reason)) {
-                detectedReasons.push(reason);
-              }
-            } else {
-              slotResults.push({ time: timeStr, available: true, reason: "" });
-              hasAvailableSlot = true;
-            }
-          });
-        }
-
-        // 1. 【終日チェックが入っている最初からのブロック時】の1行案内
-        const isAllDayBlockedFromBeginning = data.unavailableTimes.length >= totalSlotsCount;
-        const allSameReason = isAllDayBlockedFromBeginning && data.unavailableTimes.every(t => t.split('|')[1] === data.unavailableTimes[0].split('|')[1]);
-
-        if (allSameReason) {
-          const opt = document.createElement('option');
-          opt.value = "";
-          opt.disabled = true;
-          opt.selected = true;
-
-          const mainReason = data.unavailableTimes[0].split('|')[1];
-
-          if (mainReason === "公休") {
-            opt.textContent = `【 ${staff} 】は本日公休をいただいております`;
-          } else if (mainReason === "勉強会のため予約は受け付けしていません") {
-            opt.textContent = `【 ${staff} 】は本日勉強会のため終日ご予約を受け付けておりません`;
-          } else if (mainReason === "満席") {
-            opt.textContent = `本日はすべての時間帯で満席となっております`;
-          } else {
-            opt.textContent = `【 ${staff} 】は本日お休みをいただいております (${mainReason})`;
-          }
-
-          timeSelect.appendChild(opt);
-          submitBtn.disabled = true;
-          return;
-        }
-
-        // 2. 通常の30分刻み展開
-        slotResults.forEach(slot => {
-          const opt = document.createElement('option');
-          opt.value = slot.time;
-
-          if (!slot.available) {
-            opt.textContent = `${slot.time} (× ${slot.reason})`;
-            opt.disabled = true;
-          } else {
-            opt.textContent = `${slot.time} (○ 空きあり)`;
-          }
-          timeSelect.appendChild(opt);
-        });
-
-        // 💡【修正ポイント】選べる枠が1つもない（メニューの長さで埋まった）場合、先頭に「満席案内」を差し込む
-        if (!hasAvailableSlot) {
-          const noticeOpt = document.createElement('option');
-          noticeOpt.value = "";
-          noticeOpt.textContent = "本日はすべての時間帯で満席となっております";
-          noticeOpt.selected = true;
-          noticeOpt.disabled = true;
-          timeSelect.insertBefore(noticeOpt, timeSelect.firstChild);
-        }
-
-        submitBtn.disabled = !hasAvailableSlot;
-
-      } else {
-        timeSelect.innerHTML = '<option value="">エラーが発生しました</option>';
+      // 定休日・臨時休業日の判定
+      if (unavailableTimes.includes("SHOP_HOLIDAY") || displaySlots.length === 0) {
+        timeSelect.innerHTML = '<option value="">本日は定休日・または休業日です</option>';
+        return;
       }
+
+      // 💡 GASから届いた可変のベース時間をループさせ、NG枠に入っていないものだけをボタン化する
+      let availableCount = 0;
+      displaySlots.forEach(timeStr => {
+        if (!unavailableTimes.includes(timeStr)) {
+          const option = document.createElement('option');
+          option.value = timeStr;
+          option.textContent = timeStr;
+          timeSelect.appendChild(option);
+          availableCount++;
+        }
+      });
+
+      if (availableCount === 0) {
+        timeSelect.innerHTML = '<option value="">申し訳ありません。本日はいっぱいです</option>';
+      } else {
+        timeSelect.disabled = false;
+        submitBtn.disabled = false;
+      }
+
     } catch (error) {
-      console.error(error);
-      timeSelect.innerHTML = '<option value="">通信エラーが発生しました</option>';
+      console.error('通信エラー:', error);
+      timeSelect.innerHTML = '<option value="">エラーが発生しました。再試行してください</option>';
     }
   }
 
+  // フォーム送信処理
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    submitBtn.disabled = true;
-    loading.style.display = 'block';
+    if (!confirm('この内容で予約を確定してもよろしいですか？')) return;
 
-    const fields = ['name', 'name_kana', 'tel', 'email', 'birthday'];
-    fields.forEach(field => {
+    submitBtn.disabled = true;
+    submitBtn.textContent = '予約を登録中...';
+
+    storageFields.forEach(field => {
       localStorage.setItem(`sis_${field}`, document.getElementById(field).value);
     });
 
@@ -280,19 +234,21 @@
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
       });
       const data = await response.json();
+      
       if (data.success) {
         alert('ご予約が完了しました！確定メールをご確認ください。');
         form.reset();
         timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
+        timeSelect.disabled = true;
       } else {
         alert('予約に失敗しました: ' + data.message);
-        submitBtn.disabled = false;
       }
     } catch (error) {
-      alert('通信エラーが発生しました。');
-      submitBtn.disabled = false;
+      console.error('送信エラー:', error);
+      alert('通信エラーが発生しました。カレンダー等をご確認ください。');
     } finally {
-      loading.style.display = 'none';
+      submitBtn.disabled = false;
+      submitBtn.textContent = '上記の内容で予約を確定する';
     }
   });
 </script>
