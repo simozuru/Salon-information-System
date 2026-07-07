@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 2.1</title>
+  <title>SIS Web Reservation - ver 2.2</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -37,7 +37,7 @@
 
 <div class="container">
   <h1>SIS WEB RESERVATION</h1>
-  <div class="subtitle">サロン予約システム (Version 2.1 可変スロット対応版)</div>
+  <div class="subtitle">サロン予約システム (Version 2.2 〇/×可視化対応版)</div>
 
   <form id="reservation-form">
     <div class="form-group">
@@ -113,7 +113,7 @@
 
 <script>
   // 💡 あなたのデプロイした最新の「WebアプリURL」に書き換えてください
-  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxiQeuqvBTLOgwj8fCHUihRfUxRVOi8ft__D88ulTbU0bI2uVCImUbL89UgrM2pH7JV/exec";
+  const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzzwrfxTC_9Y9smzoj3XlfgmRZ3WUbMnmejWzHlly3oAotJDOXlCbMzbHHAlBtUPQw9/exec";
 
   const form = document.getElementById('reservation-form');
   const dateInput = document.getElementById('date');
@@ -133,20 +133,19 @@
     if (saved) document.getElementById(field).value = saved;
   });
 
-  // 日付・スタッフ・メニューが変更されたら時間を再計算する
+  // 条件が変更されたらステータスを再計算
   [dateInput, staffSelect, menuSelect].forEach(element => {
     element.addEventListener('change', updateAvailableTimes);
   });
 
   /**
-   * 💡 【Version 2.1 大改造】表示時間枠とNG枠をダブルで取得し、ボタンを自動生成する
+   * 💡 【Version 2.2】届いたステータス（〇/×）を元に、選択肢をすべて生成して出し分ける
    */
   async function updateAvailableTimes() {
     const dateVal = dateInput.value;
     const staffVal = staffSelect.value;
     const menuVal = menuSelect.value;
 
-    // 必須項目が揃っていなければ時間選択をロック
     if (!dateVal || !staffVal || !menuVal) {
       timeSelect.disabled = true;
       timeSelect.innerHTML = '<option value="">日時とメニューを選択してください</option>';
@@ -159,42 +158,48 @@
     submitBtn.disabled = true;
 
     try {
-      // API 1: 【完全新設】お店の設定に追従した「表示用のベース時間枠リスト」を取得
-      const slotsResponse = await fetch(`${GAS_WEB_APP_URL}?method=getDisplaySlots&date=${dateVal}`);
-      if (!slotsResponse.ok) throw new Error('時間マスタの取得に失敗しました');
-      const displaySlots = await slotsResponse.json();
+      // 💡【Version 2.2 変更】時間枠ごとのステータス（〇/×）オブジェクトを1発で取得する
+      const response = await fetch(`${GAS_WEB_APP_URL}?method=getSlotStatuses&date=${dateVal}&staff=${encodeURIComponent(staffVal)}&menu=${encodeURIComponent(menuVal)}`);
+      if (!response.ok) throw new Error('データ取得に失敗しました');
+      const slotStatuses = await response.json();
 
-      // API 2: すでにカレンダーが埋まっていて予約不可能な「NG時間枠リスト」を取得
-      const unavResponse = await fetch(`${GAS_WEB_APP_URL}?method=getUnavailableTimes&date=${dateVal}&staff=${encodeURIComponent(staffVal)}&menu=${encodeURIComponent(menuVal)}`);
-      if (!unavResponse.ok) throw new Error('空き枠データの取得に失敗しました');
-      const unavailableTimes = await unavResponse.json();
-
-      // 選択ボックスをリセット
+      // 選択ボックスを一度完全に空にする
       timeSelect.innerHTML = '<option value="">時間を選択してください</option>';
 
-      // 定休日・臨時休業日の判定
-      if (unavailableTimes.includes("SHOP_HOLIDAY") || displaySlots.length === 0) {
+      // 定休日・臨時休業日判定
+      if (slotStatuses.SHOP_HOLIDAY) {
         timeSelect.innerHTML = '<option value="">本日は定休日・または休業日です</option>';
         return;
       }
 
-      // 💡 GASから届いた可変のベース時間をループさせ、NG枠に入っていないものだけをボタン化する
-      let availableCount = 0;
-      displaySlots.forEach(timeStr => {
-        if (!unavailableTimes.includes(timeStr)) {
-          const option = document.createElement('option');
-          option.value = timeStr;
-          option.textContent = timeStr;
-          timeSelect.appendChild(option);
-          availableCount++;
+      // オブジェクトのキー（時間文字列）を並び替えて走査
+      const timeKeys = Object.keys(slotStatuses).sort();
+      let selectableCount = 0;
+
+      timeKeys.forEach(timeStr => {
+        const status = slotStatuses[timeStr]; // "○" または "×"
+        const option = document.createElement('option');
+        option.value = timeStr;
+
+        if (status === "○") {
+          // 予約可能な場合
+          option.textContent = `${timeStr}  〇`;
+          selectableCount++;
+        } else {
+          // 💡 予約不可能な場合：テキストを「×」にし、選択できないようにロック（disabled）する
+          option.textContent = `${timeStr}  ×`;
+          option.disabled = true;
         }
+        
+        timeSelect.appendChild(option);
       });
 
-      if (availableCount === 0) {
-        timeSelect.innerHTML = '<option value="">申し訳ありません。本日はいっぱいです</option>';
-      } else {
+      // 1枠でも選べる時間があれば時間選択と確定ボタンを活性化
+      if (selectableCount > 0) {
         timeSelect.disabled = false;
         submitBtn.disabled = false;
+      } else {
+        timeSelect.innerHTML = '<option value="">申し訳ありません。本日はいっぱいです</option>';
       }
 
     } catch (error) {
@@ -203,7 +208,7 @@
     }
   }
 
-  // フォーム送信処理
+  // フォーム送信処理（変更なし）
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (!confirm('この内容で予約を確定してもよろしいですか？')) return;
