@@ -247,7 +247,7 @@
         timeSelect.disabled = false;
         submitBtn.disabled = false;
       } else {
-        timeSelect.innerHTML = '<option value="">申し訳ありません。本日はいっぱいです</option>';
+        timeSelect.innerHTML = '<option value="">申し訳ありません。本日は満席です</option>';
       }
 
     } catch (error) {
@@ -358,7 +358,7 @@
             <div class="res-row"><span class="res-label">予約日</span> ${formattedDate}</div>
             <div class="res-row"><span class="res-label">予約時間</span> ${formattedTime}</div>
             <div class="res-row"><span class="res-label">メニュー</span> ${res.menu}</div>
-            <div class="res-row"><span class="res-label">担当</span> ${res.staff} 様</div>
+            <div class="res-row"><span class="res-label">担当</span> ${res.staff}</div>
             ${res.memo ? `<div class="res-row"><span class="res-label">備考・メモ</span> ${res.memo}</div>` : ''}
             <div class="res-created">⏱ 受付時間：${res.createdAt}</div>
             <button class="btn-cancel" onclick="requestCancel('${res.date}', '${res.time}', '${res.staff}')">この予約をキャンセルする</button>
