@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.0.4</title>
+  <title>SIS Web Reservation - ver 3.0.5</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -57,14 +57,13 @@
 
 <div class="container">
   <h1>SIS WEB RESERVATION</h1>
-  <div class="subtitle">サロン予約システム (Version 3.0.4)</div>
+  <div class="subtitle">サロン予約システム (Version 3.0.5)</div>
 
   <div class="tabs">
     <button class="tab-btn active" onclick="switchTab('reserve-tab')">新規予約</button>
     <button class="tab-btn" onclick="switchTab('check-tab')">予約の確認・キャンセル</button>
   </div>
 
-  <!-- 🟢 タブ1: 新規予約フォーム -->
   <div id="reserve-tab" class="tab-content active">
     <form id="reservation-form">
       <div class="form-group">
@@ -124,8 +123,6 @@
         <div class="note">予約確定メールが届きますので、正しくご入力ください</div>
       </div>
 
-      <!-- 💡 お誕生日（生年月日）入力欄は綺麗に削除しました -->
-
       <div class="form-group">
         <label for="memo">ご要望・備考</label>
         <textarea id="memo" placeholder="髪型のご相談や、お急ぎの時間などがあればご記入ください"></textarea>
@@ -135,14 +132,12 @@
     </form>
   </div>
 
-  <!-- 🔵 タブ2: 予約確認エリア -->
   <div id="check-tab" class="tab-content">
     <div class="form-group">
       <label for="check-tel">ご登録の携帯電話番号</label>
       <input type="tel" id="check-tel" placeholder="09012345678">
     </div>
     
-    <!-- 💡 セキュリティ強化のためのメールアドレス入力欄 -->
     <div class="form-group">
       <label for="check-email">ご登録のメールアドレス</label>
       <input type="email" id="check-email" placeholder="example@gmail.com">
@@ -182,7 +177,6 @@
   const today = new Date().toISOString().split('T')[0];
   dateInput.min = today;
 
-  // 💡 読込時にLocalStorageからすべての情報を復元（予約・確認画面両方）
   const storageFields = ['name', 'name_kana', 'tel', 'email'];
   storageFields.forEach(field => {
     const saved = localStorage.getItem(`sis_${field}`);
@@ -247,7 +241,7 @@
         timeSelect.disabled = false;
         submitBtn.disabled = false;
       } else {
-        timeSelect.innerHTML = '<option value="">申し訳ありません。本日は満席です</option>';
+        timeSelect.innerHTML = '<option value="">申し訳ありません。本日はいっぱいです</option>';
       }
 
     } catch (error) {
@@ -263,7 +257,6 @@
     submitBtn.disabled = true;
     submitBtn.textContent = '予約を登録中...';
 
-    // LocalStorageへ保存
     storageFields.forEach(field => {
       localStorage.setItem(`sis_${field}`, document.getElementById(field).value);
     });
@@ -289,7 +282,6 @@
       
       if (data.success) {
         alert('ご予約が完了しました！確定メールをご確認ください。');
-        // 💡 予約完了時に確認タブの入力欄にも値を即時同期
         document.getElementById('check-tel').value = document.getElementById('tel').value;
         document.getElementById('check-email').value = document.getElementById('email').value;
         form.reset();
@@ -308,7 +300,6 @@
     }
   });
 
-  // 💡 TEL + Mail によるセキュアな予約照合処理
   async function fetchReservations() {
     const telInput = document.getElementById('check-tel').value.trim();
     const emailInput = document.getElementById('check-email').value.trim();
@@ -324,7 +315,6 @@
     checkBtn.textContent = '検索中...';
     resultsArea.innerHTML = '<div class="no-data">予約データを検索しています。少々お待ちください...</div>';
 
-    // 💡 確認画面で手動入力された場合も、次回のためにLocalStorageを更新
     localStorage.setItem('sis_tel', telInput);
     localStorage.setItem('sis_email', emailInput);
 
@@ -378,7 +368,7 @@
   }
 
   function requestCancel(date, time, staff) {
-    alert(`【キャンセル機能は次回実装】\n対象予約：${date} ${time} (${staff}様 担当)\n\nただいま自動キャンセル処理を開発中です。お手数ですが、取り消しの際はお電話またはサロン公式LINEよりご連絡ください。`);
+    alert(`【キャンセル機能は次回実装】\n対象予約：${date} ${time} (${staff} 担当)\n\nただいま自動キャンセル処理を開発中です。お手数ですが、取り消しの際はお電話またはサロン公式LINEよりご連絡ください。`);
   }
 </script>
 
