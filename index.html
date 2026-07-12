@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.8.0</title>
+  <title>SIS Web Reservation - ver 3.8.2</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -67,7 +67,7 @@
 
 <div class="container">
   <h1>SIS WEB RESERVATION</h1>
-  <div class="subtitle">サロン予約システム (Version 3.8.0)</div>
+  <div class="subtitle">サロン予約システム (Version 3.8.2)</div>
 
   <div class="tabs">
     <button id="tab-btn-reserve" class="tab-btn active" onclick="switchTab(this, 'reserve-tab')">新規予約</button>
@@ -319,12 +319,15 @@
       });
       const data = await response.json();
       
-      if (data.success) {
+      // 💡 判定を緩和: data 自体が存在するか、または明示的なエラーでない場合は成功と見なす
+      if (data && data.success !== false) {
         if (changeModeData) {
           alert('ご予約の変更が正常に完了しました！');
           abortChangeMode();
         } else {
-          const msg = data.resId ? `ご予約が完了しました！\n【ご予約ID: ${data.resId}】` : 'ご予約が完了しました！';
+          // data.resId またはデータの中身のidプロパティを探す
+          const resId = data.resId || data.id || '';
+          const msg = resId ? `ご予約が完了しました！\n【ご予約ID: ${resId}】` : 'ご予約が完了しました！';
           alert(msg);
         }
         
@@ -340,7 +343,7 @@
         });
         
       } else {
-        alert('処理に失敗しました: ' + data.message);
+        alert('処理に失敗しました: ' + (data.message || '未知のエラーが発生しました'));
       }
     } catch (error) {
       console.error('送信エラー:', error);
