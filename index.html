@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.7.0</title>
+  <title>SIS Web Reservation - ver 3.8.0</title>
   <style>
     :root {
       --primary-color: #4a4a4a;
@@ -75,8 +75,16 @@
   </div>
 
   <div id="reserve-tab" class="tab-content active">
+    <!-- 💡変更内容を詳細表示できるようにバナーの構造をアップグレード -->
     <div id="change-banner" class="change-alert-banner">
       現在 <strong>【予約日時を変更中】</strong> です。<br>
+      <div style="margin: 10px 0; padding: 10px; background-color: #ffffff; border-radius: 4px; border-left: 4px solid var(--accent-color); font-size: 13px; text-align: left;">
+        <strong style="display: block; margin-bottom: 5px; color: var(--accent-color);">【変更前の予約内容】</strong>
+        <div style="margin-bottom: 3px;"><span class="res-label" style="width: 70px;">予約ID:</span><span id="prev-id" style="font-weight: bold;"></span></div>
+        <div style="margin-bottom: 3px;"><span class="res-label" style="width: 70px;">日時:</span><span id="prev-datetime" style="font-weight: bold;"></span></div>
+        <div style="margin-bottom: 3px;"><span class="res-label" style="width: 70px;">メニュー:</span><span id="prev-menu" style="font-weight: bold;"></span></div>
+        <div><span class="res-label" style="width: 70px;">担当者:</span><span id="prev-staff" style="font-weight: bold;"></span></div>
+      </div>
       新しい日時を選択して、一番下の「変更を確定する」ボタンを押してください。
       <button type="button" class="btn-cancel-change" onclick="abortChangeMode()">➔ 変更をやめる</button>
     </div>
@@ -456,6 +464,15 @@
     document.getElementById('memo').value = buttonEl.getAttribute('data-memo');
     dateInput.value = changeModeData.oldDate;
 
+    // 🌟【追加】変更前の情報をバナーに埋め込む
+    const prevDateParts = changeModeData.oldDate.split('-');
+    const formattedOldDate = prevDateParts.length === 3 ? `${prevDateParts[0]}年${prevDateParts[1]}月${prevDateParts[2]}日` : changeModeData.oldDate;
+    
+    document.getElementById('prev-id').textContent = changeModeData.resId;
+    document.getElementById('prev-datetime').textContent = `${formattedOldDate}  ${changeModeData.oldTime}`;
+    document.getElementById('prev-menu').textContent = changeModeData.oldMenu;
+    document.getElementById('prev-staff').textContent = changeModeData.oldStaff;
+
     document.getElementById('change-banner').style.display = 'block';
     submitBtn.textContent = '上記の内容で変更を確定する';
 
@@ -469,6 +486,13 @@
   function abortChangeMode() {
     changeModeData = null;
     document.getElementById('change-banner').style.display = 'none';
+    
+    // 🌟【追加】バナー内の表示データをクリア
+    document.getElementById('prev-id').textContent = '';
+    document.getElementById('prev-datetime').textContent = '';
+    document.getElementById('prev-menu').textContent = '';
+    document.getElementById('prev-staff').textContent = '';
+
     submitBtn.textContent = '上記の内容で予約を確定する';
     
     form.reset();
