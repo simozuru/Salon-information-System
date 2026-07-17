@@ -1,6 +1,6 @@
 // ⚙️ システム設定
 const CONFIG = {
-  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbzPPvEwfGEcq4GjzAYYOV6MoPj5_WGDEKrrEWABHTixlPHWStWRuje1aQwT5KOpv-19/exec",
+  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyZgYK3G6OtiBedUUWSUfX-fre3XCrWkfilymufDlv9bINohyw_jkYI2J_IqoGQjCgr/exec",
   STORAGE_FIELDS: ['name', 'name_kana', 'tel', 'email']
 };
 
@@ -25,19 +25,55 @@ const menuSelect = document.getElementById('menu');
 const timeSelect = document.getElementById('time');
 const submitBtn = document.getElementById('submit-btn');
 
-// 今日の日付をカレンダーの最小値に設定
-const today = new Date().toISOString().split('T')[0];
-dateInput.min = today;
+// ==========================================
+// 💡【キャッシュ最優先復元】ページを開いた時に即座に復元
+// ==========================================
+function restoreCachedCustomerData() {
+  CONFIG.STORAGE_FIELDS.forEach(field => {
+    const saved = localStorage.getItem(`sis_${field}`);
+    if (saved) {
+      const el = document.getElementById(field);
+      if (el) el.value = saved;
+      
+      // 確認用タブ側の入力欄にも自動セット
+      if (field === 'tel') {
+        const checkTel = document.getElementById('check-tel');
+        if (checkTel) checkTel.value = saved;
+      }
+      if (field === 'email') {
+        const checkEmail = document.getElementById('check-email');
+        if (checkEmail) checkEmail.value = saved;
+      }
+    }
+  });
+}
+// 即時実行
+restoreCachedCustomerData();
 
-// ローカルストレージから前回入力値を復元
-CONFIG.STORAGE_FIELDS.forEach(field => {
-  const saved = localStorage.getItem(`sis_${field}`);
-  if (saved) {
-    document.getElementById(field).value = saved;
-    if (field === 'tel') document.getElementById('check-tel').value = saved;
-    if (field === 'email') document.getElementById('check-email').value = saved;
+
+// --- カレンダーの過去・未来予約制限（JST対応・安全装置付き） ---
+try {
+  const nowJST = new Date(Date.now() + (9 * 60 * 60 * 1000)); 
+  const todayStr = nowJST.toISOString().split('T')[0];
+  dateInput.min = todayStr;
+
+  const bridgeEl = document.getElementById('gas-config-bridge');
+  let maxFutureDays = 30;
+  
+  if (bridgeEl) {
+    const rawDays = bridgeEl.getAttribute('data-max-future-days');
+    if (rawDays && !isNaN(rawDays)) {
+      maxFutureDays = parseInt(rawDays, 10);
+    }
   }
-});
+
+  const maxDateObj = new Date(nowJST.getTime() + (maxFutureDays * 24 * 60 * 60 * 1000));
+  const maxDateStr = maxDateObj.toISOString().split('T')[0];
+  dateInput.max = maxDateStr;
+} catch (configError) {
+  console.error("カレンダー限界値の設定中にエラーが発生しました:", configError);
+}
+
 
 // 入力変更時の空き時間取得イベントを設定
 [dateInput, staffSelect, menuSelect].forEach(element => {
@@ -123,11 +159,11 @@ form.addEventListener('submit', async (e) => {
   submitBtn.disabled = true;
   submitBtn.textContent = changeModeData ? '予約を変更中...' : '予約を登録中...';
 
+  // 💡送信直前に入力データを確実にローカルストレージへ保存
   CONFIG.STORAGE_FIELDS.forEach(field => {
     localStorage.setItem(`sis_${field}`, document.getElementById(field).value);
   });
 
-  // 予約状況リロード用（変更完了後に使用）に連絡先情報を一時保持
   const submittedTel = document.getElementById('tel').value;
   const submittedEmail = document.getElementById('email').value;
 
@@ -160,7 +196,7 @@ form.addEventListener('submit', async (e) => {
     const data = await response.json();
     
     if (data.success) {
-      const isChangeMode = !!changeModeData; // 変更中だったかどうかのフラグを退避
+      const isChangeMode = !!changeModeData;
 
       if (isChangeMode) {
         alert('ご予約の変更が正常に完了しました！');
@@ -170,18 +206,22 @@ form.addEventListener('submit', async (e) => {
         alert(msg);
       }
       
+      // 💡確認用タブの入力欄を更新
       document.getElementById('check-tel').value = submittedTel;
       document.getElementById('check-email').value = submittedEmail;
-      form.reset();
+
+      // 💡【キャッシュ保護の核心】form.reset() を使わず、入力選択系のみを安全にリセット
+      dateInput.value = '';
+      staffSelect.selectedIndex = 0; // 「指名なし」へ戻す
+      menuSelect.selectedIndex = 0;  // 「選択してください」へ戻す
       timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
       timeSelect.disabled = true;
-      
-      CONFIG.STORAGE_FIELDS.forEach(field => {
-        const saved = localStorage.getItem(`sis_${field}`);
-        if (saved) document.getElementById(field).value = saved;
-      });
+      document.getElementById('memo').value = '';
 
-      // 💡【追加】変更処理が正常完了した場合、確認タブへ切り替えて一覧をリロード
+      // お客様の個人情報キャッシュを念のため再ロードして表示を固める
+      restoreCachedCustomerData();
+
+      // 変更処理が正常完了した場合、確認タブへ切り替えて一覧をリロード
       if (isChangeMode) {
         const checkTabBtn = document.getElementById('tab-btn-check');
         switchTab(checkTabBtn, 'check-tab');
@@ -333,13 +373,16 @@ function abortChangeMode() {
 
   submitBtn.textContent = '上記の内容で予約を確定する';
   
-  form.reset();
-  CONFIG.STORAGE_FIELDS.forEach(field => {
-    const saved = localStorage.getItem(`sis_${field}`);
-    if (saved) document.getElementById(field).value = saved;
-  });
+  // フォーム全体の初期化
+  dateInput.value = '';
+  staffSelect.selectedIndex = 0;
+  menuSelect.selectedIndex = 0;
   timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
   timeSelect.disabled = true;
+  document.getElementById('memo').value = '';
+  
+  // キャッシュから個人情報を再セット
+  restoreCachedCustomerData();
 }
 
 // キャンセルリクエスト送信
