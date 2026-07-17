@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.9.1</title>
+  <title>SIS Web Reservation - ver 3.8.4</title>
   <!-- 💡 デザインファイルを外部から読み込み -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -11,7 +11,7 @@
 
 <div class="container">
   <h1>SIS WEB RESERVATION</h1>
-  <div class="subtitle">サロン予約システム (Version 3.9.1)</div>
+  <div class="subtitle">サロン予約システム (Version 3.8.4)</div>
 
   <div class="tabs">
     <button id="tab-btn-reserve" class="tab-btn active" onclick="switchTab(this, 'reserve-tab')">新規予約</button>
@@ -35,8 +35,7 @@
     <form id="reservation-form">
       <div class="form-group">
         <label for="date">ご来店希望日 *</label>
-        <!-- 💡 GASから直接「今日」と「最大未来日」を埋め込み、初期状態から完璧にカレンダーを制限 -->
-        <input type="date" id="date" min="<?= todayStr ?>" max="<?= maxDateStr ?>" required>
+        <input type="date" id="date" required>
       </div>
 
       <div class="form-group">
