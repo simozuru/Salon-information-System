@@ -1,6 +1,6 @@
 // ⚙️ システム設定
 const CONFIG = {
-  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbzs6Kq2e5pYET7Wip0oLBCsjSrv1D2QxIyakpns6LWO7bmugmg_n_lTXRMw1IgkObHg/exec",
+  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyFudgdmftKwbE0gT1ugkVBFRdeUvZ9yDsJyEAxjoIaq0H1Vci5lByRcdWhN6-lwzBR/exec",
   STORAGE_FIELDS: ['name', 'name_kana', 'tel', 'email']
 };
 
@@ -176,7 +176,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// 入力変更時の空き時間取得イベントを設定
+// 入入力変更時の空き時間取得イベントを設定
 [dateInput, staffSelect, menuSelect].forEach(element => {
   element.addEventListener('change', updateAvailableTimes);
 });
@@ -247,6 +247,19 @@ async function updateAvailableTimes() {
   }
 }
 
+// ==========================================
+// 💡【共通】ポスト送信処理（JSON形式一元化）
+// ==========================================
+async function postReservationData(reservationObj) {
+  const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
+    method: 'POST',
+    body: JSON.stringify(reservationObj),
+    headers: { 'Content-Type': 'application/json' }
+  });
+  if (!response.ok) throw new Error('サーバーとの通信に失敗しました');
+  return await response.json();
+}
+
 // 予約登録・変更の送信処理
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -267,33 +280,23 @@ form.addEventListener('submit', async (e) => {
   const submittedTel = document.getElementById('tel').value;
   const submittedEmail = document.getElementById('email').value;
 
-  const formData = new URLSearchParams();
-  
-  if (changeModeData) {
-    formData.append('action', 'change');
-    formData.append('resId', changeModeData.resId);
-    formData.append('newDate', dateInput.value);
-    formData.append('newTime', timeSelect.value);
-  } else {
-    formData.append('date', dateInput.value);
-    formData.append('time', timeSelect.value);
-  }
-  
-  formData.append('staff', staffSelect.value);
-  formData.append('menu', menuSelect.value);
-  formData.append('name', document.getElementById('name').value);
-  formData.append('name_kana', document.getElementById('name_kana').value);
-  formData.append('tel', submittedTel);
-  formData.append('email', submittedEmail);
-  formData.append('memo', document.getElementById('memo').value);
+  // 💡 1つの綺麗に統一された「Reservationオブジェクト」としてデータを構築
+  const reservationData = {
+    resId: changeModeData ? changeModeData.resId : null,
+    isCancel: false,
+    date: dateInput.value,
+    time: timeSelect.value,
+    staff: staffSelect.value,
+    menu: menuSelect.value,
+    name: document.getElementById('name').value,
+    name_kana: document.getElementById('name_kana').value,
+    tel: submittedTel,
+    email: submittedEmail,
+    memo: document.getElementById('memo').value
+  };
 
   try {
-    const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
-      method: 'POST',
-      body: formData,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-    const data = await response.json();
+    const data = await postReservationData(reservationData);
     
     if (data.success) {
       const isChangeMode = !!changeModeData;
@@ -407,7 +410,13 @@ async function fetchReservations() {
                     data-staff="${safeStaff}" 
                     data-menu="${safeMenu}" 
                     data-memo="${safeMemo}">日時を変更する</button>
-            <button type="button" class="btn-cancel" data-id="${safeId}">この予約をキャンセルする</button>
+            <button type="button" class="btn-cancel" 
+                    data-id="${safeId}"
+                    data-date="${res.date}" 
+                    data-time="${res.time}" 
+                    data-staff="${safeStaff}" 
+                    data-menu="${safeMenu}" 
+                    data-memo="${safeMemo}">この予約をキャンセルする</button>
           </div>
         </div>
       `;
@@ -490,17 +499,22 @@ async function requestCancel(buttonEl) {
   const resultsArea = document.getElementById('check-results-area');
   resultsArea.innerHTML = '<div class="no-data">予約のキャンセル処理を行っています。少々お待ちください...</div>';
 
-  const formData = new URLSearchParams();
-  formData.append('action', 'cancel');
-  formData.append('resId', resId);
+  // 💡 キャンセル時も共通のキー構造を維持し、顧客情報や既存の情報を一緒に投げる設計に
+  const reservationData = {
+    resId: resId,
+    isCancel: true,
+    date: buttonEl.getAttribute('data-date'),
+    time: buttonEl.getAttribute('data-time'),
+    staff: buttonEl.getAttribute('data-staff'),
+    menu: buttonEl.getAttribute('data-menu'),
+    name: document.getElementById('name').value, 
+    tel: document.getElementById('check-tel').value.trim(),
+    email: document.getElementById('check-email').value.trim(),
+    memo: buttonEl.getAttribute('data-memo')
+  };
 
   try {
-    const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
-      method: 'POST',
-      body: formData,
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
-    const data = await response.json();
+    const data = await postReservationData(reservationData);
 
     if (data.success) {
       alert('ご予約のキャンセルが正常に完了しました。');
