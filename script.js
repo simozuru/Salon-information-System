@@ -1,6 +1,6 @@
 // ⚙️ システム設定
 const CONFIG = {
-  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbyFudgdmftKwbE0gT1ugkVBFRdeUvZ9yDsJyEAxjoIaq0H1Vci5lByRcdWhN6-lwzBR/exec",
+  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbxJSEF6PvSlMfEuzeywZm5D3t_wRrj4Bx5XTYpoHfxVZm185Ev15HvPJtnY5kJRVG81/exec",
   STORAGE_FIELDS: ['name', 'name_kana', 'tel', 'email']
 };
 
@@ -124,56 +124,9 @@ async function initializeSystemSettings() {
     console.error("システム設定の初期化中にエラーが発生しました:", error);
   }
 }
+// ページ読み込み時に実行
+window.addEventListener('DOMContentLoaded', initializeSystemSettings);
 
-// ==========================================
-// 💡【Ver 3.9.6.1 新設】純粋なリスナー（イベントハンドラー）の集中管理
-// ==========================================
-function setupEventListeners() {
-  // 1. タブボタンの切り替えイベント
-  const tabBtnReserve = document.getElementById('tab-btn-reserve');
-  const tabBtnCheck = document.getElementById('tab-btn-check');
-  
-  if (tabBtnReserve) {
-    tabBtnReserve.addEventListener('click', function() {
-      switchTab(this, 'reserve-tab');
-    });
-  }
-  if (tabBtnCheck) {
-    tabBtnCheck.addEventListener('click', function() {
-      switchTab(this, 'check-tab');
-    });
-  }
-
-  // 2. 予約変更の中止ボタン
-  const abortChangeBtn = document.getElementById('btn-abort-change');
-  if (abortChangeBtn) {
-    abortChangeBtn.addEventListener('click', abortChangeMode);
-  }
-
-  // 3. 予約状況の検索確認ボタン
-  const checkBtn = document.getElementById('check-btn');
-  if (checkBtn) {
-    checkBtn.addEventListener('click', fetchReservations);
-  }
-
-  // 4. 動的に生成される「確認カード」内のボタン操作（イベント委譲）
-  const resultsArea = document.getElementById('check-results-area');
-  if (resultsArea) {
-    resultsArea.addEventListener('click', function(e) {
-      if (e.target && e.target.classList.contains('btn-change')) {
-        startChangeMode(e.target);
-      } else if (e.target && e.target.classList.contains('btn-cancel')) {
-        requestCancel(e.target);
-      }
-    });
-  }
-}
-
-// ページ読み込み時の初期化処理
-window.addEventListener('DOMContentLoaded', () => {
-  initializeSystemSettings();
-  setupEventListeners(); // リスナーを一発で紐付け
-});
 
 // 入力変更時の空き時間取得イベントを設定
 [dateInput, staffSelect, menuSelect].forEach(element => {
@@ -186,6 +139,7 @@ async function updateAvailableTimes() {
   const staffVal = staffSelect.value;
   const menuVal = menuSelect.value;
 
+  // 完全指名制などで未選択状態（""）の場合は処理を中断
   if (!dateVal || !staffVal || !menuVal) {
     timeSelect.disabled = true;
     timeSelect.innerHTML = '<option value="">日時とメニューを選択してください</option>';
@@ -246,19 +200,6 @@ async function updateAvailableTimes() {
   }
 }
 
-// ==========================================
-// 💡【共通】ポスト送信処理（JSON形式一元化）
-// ==========================================
-async function postReservationData(reservationObj) {
-  // CORS対策のため headers オプションを付与せずプレーンテキストとして送信
-  const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
-    method: 'POST',
-    body: JSON.stringify(reservationObj)
-  });
-  if (!response.ok) throw new Error('サーバーとの通信に失敗しました');
-  return await response.json();
-}
-
 // 予約登録・変更の送信処理
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -272,6 +213,7 @@ form.addEventListener('submit', async (e) => {
   submitBtn.disabled = true;
   submitBtn.textContent = changeModeData ? '予約を変更中...' : '予約を登録中...';
 
+  // 💡送信直前に入力データを確実にローカルストレージへ保存
   CONFIG.STORAGE_FIELDS.forEach(field => {
     localStorage.setItem(`sis_${field}`, document.getElementById(field).value);
   });
@@ -279,23 +221,33 @@ form.addEventListener('submit', async (e) => {
   const submittedTel = document.getElementById('tel').value;
   const submittedEmail = document.getElementById('email').value;
 
-  // 1つの綺麗に統一された「Reservationオブジェクト」としてデータを構築
-  const reservationData = {
-    resId: changeModeData ? changeModeData.resId : null,
-    isCancel: false,
-    date: dateInput.value,
-    time: timeSelect.value,
-    staff: staffSelect.value,
-    menu: menuSelect.value,
-    name: document.getElementById('name').value,
-    name_kana: document.getElementById('name_kana').value,
-    tel: submittedTel,
-    email: submittedEmail,
-    memo: document.getElementById('memo').value
-  };
+  const formData = new URLSearchParams();
+  
+  if (changeModeData) {
+    formData.append('action', 'change');
+    formData.append('resId', changeModeData.resId);
+    formData.append('newDate', dateInput.value);
+    formData.append('newTime', timeSelect.value);
+  } else {
+    formData.append('date', dateInput.value);
+    formData.append('time', timeSelect.value);
+  }
+  
+  formData.append('staff', staffSelect.value);
+  formData.append('menu', menuSelect.value);
+  formData.append('name', document.getElementById('name').value);
+  formData.append('name_kana', document.getElementById('name_kana').value);
+  formData.append('tel', submittedTel);
+  formData.append('email', submittedEmail);
+  formData.append('memo', document.getElementById('memo').value);
 
   try {
-    const data = await postReservationData(reservationData);
+    const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
+      method: 'POST',
+      body: formData,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    const data = await response.json();
     
     if (data.success) {
       const isChangeMode = !!changeModeData;
@@ -308,19 +260,25 @@ form.addEventListener('submit', async (e) => {
         alert(msg);
       }
       
+      // 💡確認用タブの入力欄を更新
       document.getElementById('check-tel').value = submittedTel;
       document.getElementById('check-email').value = submittedEmail;
 
+      // 💡【キャッシュ保護の核心】form.reset() を使わず、入力選択系のみを安全にリセット
       dateInput.value = '';
       staffSelect.selectedIndex = 0; 
-      menuSelect.selectedIndex = 0;
+      menuSelect.selectedIndex = 0;  // 「選択してください」へ戻す
       timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
       timeSelect.disabled = true;
       document.getElementById('memo').value = '';
 
+      // お客様の個人情報キャッシュを念のため再ロードして表示を固める
       restoreCachedCustomerData();
+
+      // 初期UI設定（スタッフ表示ロジック）を再適用して整合性を保つ
       initializeSystemSettings();
 
+      // 変更処理が正常完了した場合、確認タブへ切り替えて一覧をリロード
       if (isChangeMode) {
         const checkTabBtn = document.getElementById('tab-btn-check');
         switchTab(checkTabBtn, 'check-tab');
@@ -388,7 +346,6 @@ async function fetchReservations() {
       const safeStaff = (res.staff || '').replace(/"/g, '&quot;');
       const safeMemo = (res.memo || '').replace(/"/g, '&quot;');
       const safeId = (res.id || '').replace(/"/g, '&quot;');
-      const safeName = (res.customerName || 'お客様').replace(/"/g, '&quot;');
 
       htmlContent += `
         <div class="reservation-card">
@@ -409,16 +366,9 @@ async function fetchReservations() {
                     data-time="${res.time}" 
                     data-staff="${safeStaff}" 
                     data-menu="${safeMenu}" 
-                    data-name="${safeName}"
-                    data-memo="${safeMemo}">日時を変更する</button>
-            <button type="button" class="btn-cancel" 
-                    data-id="${safeId}"
-                    data-date="${res.date}" 
-                    data-time="${res.time}" 
-                    data-staff="${safeStaff}" 
-                    data-menu="${safeMenu}" 
-                    data-name="${safeName}"
-                    data-memo="${safeMemo}">この予約をキャンセルする</button>
+                    data-memo="${safeMemo}" 
+                    onclick="startChangeMode(this)">日時を変更する</button>
+            <button type="button" class="btn-cancel" data-id="${safeId}" onclick="requestCancel(this)">この予約をキャンセルする</button>
           </div>
         </div>
       `;
@@ -450,12 +400,6 @@ function startChangeMode(buttonEl) {
   document.getElementById('memo').value = buttonEl.getAttribute('data-memo');
   dateInput.value = changeModeData.oldDate;
 
-  // 💡 確認カードから引き継いだ名前を入力欄にセットして整合性を保つ
-  const nameInput = document.getElementById('name');
-  if (nameInput) {
-    nameInput.value = buttonEl.getAttribute('data-name') || '';
-  }
-
   const prevDateParts = changeModeData.oldDate.split('-');
   const formattedOldDate = prevDateParts.length === 3 ? `${prevDateParts[0]}年${prevDateParts[1]}月${prevDateParts[2]}日` : changeModeData.oldDate;
   
@@ -486,6 +430,7 @@ function abortChangeMode() {
 
   submitBtn.textContent = '上記の内容で予約を確定する';
   
+  // フォーム全体の初期化
   dateInput.value = '';
   staffSelect.selectedIndex = 0;
   menuSelect.selectedIndex = 0;
@@ -493,7 +438,10 @@ function abortChangeMode() {
   timeSelect.disabled = true;
   document.getElementById('memo').value = '';
   
+  // キャッシュから個人情報を再セット
   restoreCachedCustomerData();
+  
+  // 初期UI設定を再適用
   initializeSystemSettings();
 }
 
@@ -507,22 +455,17 @@ async function requestCancel(buttonEl) {
   const resultsArea = document.getElementById('check-results-area');
   resultsArea.innerHTML = '<div class="no-data">予約のキャンセル処理を行っています。少々お待ちください...</div>';
 
-  // 💡 送信パラメータの名前欄に、フォーム値ではなくカードから直接取得した「data-name」を指定
-  const reservationData = {
-    resId: resId,
-    isCancel: true,
-    date: buttonEl.getAttribute('data-date'),
-    time: buttonEl.getAttribute('data-time'),
-    staff: buttonEl.getAttribute('data-staff'),
-    menu: buttonEl.getAttribute('data-menu'),
-    name: buttonEl.getAttribute('data-name') || 'お客様', 
-    tel: document.getElementById('check-tel').value.trim(),
-    email: document.getElementById('check-email').value.trim(),
-    memo: buttonEl.getAttribute('data-memo')
-  };
+  const formData = new URLSearchParams();
+  formData.append('action', 'cancel');
+  formData.append('resId', resId);
 
   try {
-    const data = await postReservationData(reservationData);
+    const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
+      method: 'POST',
+      body: formData,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    const data = await response.json();
 
     if (data.success) {
       alert('ご予約のキャンセルが正常に完了しました。');
