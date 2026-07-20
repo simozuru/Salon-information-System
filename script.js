@@ -175,8 +175,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setupEventListeners(); // リスナーを一発で紐付け
 });
 
-
-// 入入力変更時の空き時間取得イベントを設定
+// 入力変更時の空き時間取得イベントを設定
 [dateInput, staffSelect, menuSelect].forEach(element => {
   element.addEventListener('change', updateAvailableTimes);
 });
@@ -251,10 +250,11 @@ async function updateAvailableTimes() {
 // 💡【共通】ポスト送信処理（JSON形式一元化）
 // ==========================================
 async function postReservationData(reservationObj) {
+  // 💡【CORS対策】Preflight(OPTIONS)による送信ブロックを回避するため、
+  // あえて headers オプションを付与せずプレーンなテキストとして送信します。
   const response = await fetch(CONFIG.GAS_WEB_APP_URL, {
     method: 'POST',
-    body: JSON.stringify(reservationObj),
-    headers: { 'Content-Type': 'application/json' }
+    body: JSON.stringify(reservationObj)
   });
   if (!response.ok) throw new Error('サーバーとの通信に失敗しました');
   return await response.json();
@@ -280,7 +280,7 @@ form.addEventListener('submit', async (e) => {
   const submittedTel = document.getElementById('tel').value;
   const submittedEmail = document.getElementById('email').value;
 
-  // 💡 1つの綺麗に統一された「Reservationオブジェクト」としてデータを構築
+  // 1つの綺麗に統一された「Reservationオブジェクト」としてデータを構築
   const reservationData = {
     resId: changeModeData ? changeModeData.resId : null,
     isCancel: false,
@@ -499,7 +499,6 @@ async function requestCancel(buttonEl) {
   const resultsArea = document.getElementById('check-results-area');
   resultsArea.innerHTML = '<div class="no-data">予約のキャンセル処理を行っています。少々お待ちください...</div>';
 
-  // 💡 キャンセル時も共通のキー構造を維持し、顧客情報や既存の情報を一緒に投げる設計に
   const reservationData = {
     resId: resId,
     isCancel: true,
