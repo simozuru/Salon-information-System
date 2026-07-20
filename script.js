@@ -120,6 +120,17 @@ async function initializeSystemSettings() {
       }
     }
 
+    // 💡 5. メニュープルダウンの動的組み立て
+    if (settings.menuList && settings.menuList.length > 0) {
+      menuSelect.innerHTML = '<option value="">メニューを選択してください</option>';
+      settings.menuList.forEach(menuName => {
+        const opt = document.createElement('option');
+        opt.value = menuName;
+        opt.textContent = menuName;
+        menuSelect.appendChild(opt);
+      });
+    }
+
   } catch (error) {
     console.error("システム設定の初期化中にエラーが発生しました:", error);
   }
