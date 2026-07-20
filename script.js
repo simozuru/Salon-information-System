@@ -1,6 +1,6 @@
 // ⚙️ システム設定
 const CONFIG = {
-  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbxJSEF6PvSlMfEuzeywZm5D3t_wRrj4Bx5XTYpoHfxVZm185Ev15HvPJtnY5kJRVG81/exec",
+  GAS_WEB_APP_URL: "https://script.google.com/macros/s/AKfycbzs6Kq2e5pYET7Wip0oLBCsjSrv1D2QxIyakpns6LWO7bmugmg_n_lTXRMw1IgkObHg/exec",
   STORAGE_FIELDS: ['name', 'name_kana', 'tel', 'email']
 };
 
@@ -124,8 +124,56 @@ async function initializeSystemSettings() {
     console.error("システム設定の初期化中にエラーが発生しました:", error);
   }
 }
-// ページ読み込み時に実行
-window.addEventListener('DOMContentLoaded', initializeSystemSettings);
+
+// ==========================================
+// 💡【Ver 3.9.6.1 新設】純粋なリスナー（イベントハンドラー）の集中管理
+// ==========================================
+function setupEventListeners() {
+  // 1. タブボタンの切り替えイベント
+  const tabBtnReserve = document.getElementById('tab-btn-reserve');
+  const tabBtnCheck = document.getElementById('tab-btn-check');
+  
+  if (tabBtnReserve) {
+    tabBtnReserve.addEventListener('click', function() {
+      switchTab(this, 'reserve-tab');
+    });
+  }
+  if (tabBtnCheck) {
+    tabBtnCheck.addEventListener('click', function() {
+      switchTab(this, 'check-tab');
+    });
+  }
+
+  // 2. 予約変更の中止ボタン
+  const abortChangeBtn = document.getElementById('btn-abort-change');
+  if (abortChangeBtn) {
+    abortChangeBtn.addEventListener('click', abortChangeMode);
+  }
+
+  // 3. 予約状況の検索確認ボタン
+  const checkBtn = document.getElementById('check-btn');
+  if (checkBtn) {
+    checkBtn.addEventListener('click', fetchReservations);
+  }
+
+  // 4. 動的に生成される「確認カード」内のボタン操作（イベント委譲）
+  const resultsArea = document.getElementById('check-results-area');
+  if (resultsArea) {
+    resultsArea.addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('btn-change')) {
+        startChangeMode(e.target);
+      } else if (e.target && e.target.classList.contains('btn-cancel')) {
+        requestCancel(e.target);
+      }
+    });
+  }
+}
+
+// ページ読み込み時の初期化処理
+window.addEventListener('DOMContentLoaded', () => {
+  initializeSystemSettings();
+  setupEventListeners(); // リスナーを一発で紐付け
+});
 
 
 // 入力変更時の空き時間取得イベントを設定
@@ -139,7 +187,6 @@ async function updateAvailableTimes() {
   const staffVal = staffSelect.value;
   const menuVal = menuSelect.value;
 
-  // 完全指名制などで未選択状態（""）の場合は処理を中断
   if (!dateVal || !staffVal || !menuVal) {
     timeSelect.disabled = true;
     timeSelect.innerHTML = '<option value="">日時とメニューを選択してください</option>';
@@ -213,7 +260,6 @@ form.addEventListener('submit', async (e) => {
   submitBtn.disabled = true;
   submitBtn.textContent = changeModeData ? '予約を変更中...' : '予約を登録中...';
 
-  // 💡送信直前に入力データを確実にローカルストレージへ保存
   CONFIG.STORAGE_FIELDS.forEach(field => {
     localStorage.setItem(`sis_${field}`, document.getElementById(field).value);
   });
@@ -260,25 +306,19 @@ form.addEventListener('submit', async (e) => {
         alert(msg);
       }
       
-      // 💡確認用タブの入力欄を更新
       document.getElementById('check-tel').value = submittedTel;
       document.getElementById('check-email').value = submittedEmail;
 
-      // 💡【キャッシュ保護の核心】form.reset() を使わず、入力選択系のみを安全にリセット
       dateInput.value = '';
       staffSelect.selectedIndex = 0; 
-      menuSelect.selectedIndex = 0;  // 「選択してください」へ戻す
+      menuSelect.selectedIndex = 0;
       timeSelect.innerHTML = '<option value="">日付を選択してください</option>';
       timeSelect.disabled = true;
       document.getElementById('memo').value = '';
 
-      // お客様の個人情報キャッシュを念のため再ロードして表示を固める
       restoreCachedCustomerData();
-
-      // 初期UI設定（スタッフ表示ロジック）を再適用して整合性を保つ
       initializeSystemSettings();
 
-      // 変更処理が正常完了した場合、確認タブへ切り替えて一覧をリロード
       if (isChangeMode) {
         const checkTabBtn = document.getElementById('tab-btn-check');
         switchTab(checkTabBtn, 'check-tab');
@@ -366,9 +406,8 @@ async function fetchReservations() {
                     data-time="${res.time}" 
                     data-staff="${safeStaff}" 
                     data-menu="${safeMenu}" 
-                    data-memo="${safeMemo}" 
-                    onclick="startChangeMode(this)">日時を変更する</button>
-            <button type="button" class="btn-cancel" data-id="${safeId}" onclick="requestCancel(this)">この予約をキャンセルする</button>
+                    data-memo="${safeMemo}">日時を変更する</button>
+            <button type="button" class="btn-cancel" data-id="${safeId}">この予約をキャンセルする</button>
           </div>
         </div>
       `;
@@ -430,7 +469,6 @@ function abortChangeMode() {
 
   submitBtn.textContent = '上記の内容で予約を確定する';
   
-  // フォーム全体の初期化
   dateInput.value = '';
   staffSelect.selectedIndex = 0;
   menuSelect.selectedIndex = 0;
@@ -438,10 +476,7 @@ function abortChangeMode() {
   timeSelect.disabled = true;
   document.getElementById('memo').value = '';
   
-  // キャッシュから個人情報を再セット
   restoreCachedCustomerData();
-  
-  // 初期UI設定を再適用
   initializeSystemSettings();
 }
 
