@@ -379,6 +379,7 @@ async function fetchReservations() {
 
   checkBtn.disabled = true;
   checkBtn.textContent = '検索中...';
+  // 💡style="color: red;" を排除し、.no-data のみで構成
   resultsArea.innerHTML = '<div class="no-data">予約データを検索しています。少々お待ちください...</div>';
 
   localStorage.setItem('sis_tel', telInput);
@@ -391,7 +392,8 @@ async function fetchReservations() {
     const result = await response.json();
 
     if (!result.success) {
-      resultsArea.innerHTML = `<div class="no-data" style="color: red;">${result.message}</div>`;
+      // 💡style="color: red;" を排除し、.text-danger クラスへ置き換え
+      resultsArea.innerHTML = `<div class="no-data text-danger">${result.message}</div>`;
       return;
     }
 
@@ -400,7 +402,8 @@ async function fetchReservations() {
       return;
     }
 
-    let htmlContent = '<h3 style="font-size:14px; margin-bottom:15px; color:var(--primary-color);">お客様のご予約状況</h3>';
+    // 💡style="font-size:14px; margin-bottom:15px; color:var(--primary-color);" を排除し、.results-title クラスへ置き換え
+    let htmlContent = '<h3 class="results-title">お客様のご予約状況</h3>';
     
     result.reservations.forEach((res) => {
       const dateParts = res.date.split('-');
@@ -414,6 +417,7 @@ async function fetchReservations() {
       const safeMemo = (res.memo || '').replace(/"/g, '&quot;');
       const safeId = (res.id || '').replace(/"/g, '&quot;');
 
+      // 💡カード内の各種インラインスタイル（境界線、マージン）をクラスへ移行
       htmlContent += `
         <div class="reservation-card">
           <div class="res-row"><span class="res-label">予約日</span> ${formattedDate}</div>
@@ -421,11 +425,11 @@ async function fetchReservations() {
           <div class="res-row"><span class="res-label">メニュー</span> ${res.menu}</div>
           <div class="res-row"><span class="res-label">担当</span> ${res.staff}</div>
           ${res.memo ? `<div class="res-row"><span class="res-label">備考・メモ</span> ${res.memo}</div>` : ''}
-          <div class="res-row" style="margin-top: 10px; border-top: 1px dashed #e0e0e0; padding-top: 8px;">
+          <div class="res-card-divider">
             <span class="res-label">予約ID</span> 
             <span class="res-id-badge">${safeId}</span>
           </div>
-          <div class="res-created" style="border-top: none; padding-top: 0; margin-top: 5px;">⏱ 受付時間：${res.createdAt}</div>
+          <div class="res-created-time">⏱ 受付時間：${res.createdAt}</div>
           <div class="btn-action-group">
             <button type="button" class="btn-change" 
                     data-id="${safeId}" 
@@ -444,7 +448,8 @@ async function fetchReservations() {
 
   } catch (error) {
     console.error('予約検索エラー:', error);
-    resultsArea.innerHTML = '<div class="no-data" style="color: red;">エラーが発生しました。時間を置いて再度お試しください。</div>';
+    // 💡クラス化してインラインスタイル排除
+    resultsArea.innerHTML = '<div class="no-data text-danger">エラーが発生しました。時間を置いて再度お試しください。</div>';
   } finally {
     checkBtn.disabled = false;
     checkBtn.textContent = 'ご予約状況を確認する';

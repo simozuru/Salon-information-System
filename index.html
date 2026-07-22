@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.9.8</title>
+  <title>SIS Web Reservation - ver 3.9.8.1</title>
   <!-- 💡 デザインファイルを外部から読み込み -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -14,7 +14,7 @@
 
 <div class="container">
   <h1>SIS WEB RESERVATION</h1>
-  <div class="subtitle">サロン予約システム (Version 3.9.8)</div>
+  <div class="subtitle">サロン予約システム (Version 3.9.8.1)</div>
 
   <div class="tabs">
     <button id="tab-btn-reserve" class="tab-btn active" data-tab="reserve-tab">新規予約</button>
@@ -24,12 +24,12 @@
   <div id="reserve-tab" class="tab-content active">
     <div id="change-banner" class="change-alert-banner">
       現在 <strong>【予約日時を変更中】</strong> です。<br>
-      <div style="margin: 10px 0; padding: 10px; background-color: #ffffff; border-radius: 4px; border-left: 4px solid var(--accent-color); font-size: 13px; text-align: left;">
-        <strong style="display: block; margin-bottom: 5px; color: var(--accent-color);">【変更前の予約内容】</strong>
-        <div style="margin-bottom: 3px;"><span class="res-label" style="width: 70px;">日時:</span><span id="prev-datetime" style="font-weight: bold;"></span></div>
-        <div style="margin-bottom: 3px;"><span class="res-label" style="width: 70px;">メニュー:</span><span id="prev-menu" style="font-weight: bold;"></span></div>
-        <div style="margin-bottom: 3px;"><span class="res-label" style="width: 70px;">担当者:</span><span id="prev-staff" style="font-weight: bold;"></span></div>
-        <div><span class="res-label" style="width: 70px;">予約ID:</span><span id="prev-id" style="font-weight: bold;"></span></div>
+      <div class="change-alert-box">
+        <strong class="change-alert-title">【変更前の予約内容】</strong>
+        <div class="change-alert-row"><span class="res-label res-label-short">日時:</span><span id="prev-datetime" class="font-bold"></span></div>
+        <div class="change-alert-row"><span class="res-label res-label-short">メニュー:</span><span id="prev-menu" class="font-bold"></span></div>
+        <div class="change-alert-row"><span class="res-label res-label-short">担当者:</span><span id="prev-staff" class="font-bold"></span></div>
+        <div class="change-alert-row"><span class="res-label res-label-short">予約ID:</span><span id="prev-id" class="font-bold"></span></div>
       </div>
       新しい日時を選択して、一番下の「変更を確定する」ボタンを押してください。
       <button type="button" id="cancel-change-btn" class="btn-cancel-change">➔ 変更をやめる</button>
@@ -63,7 +63,7 @@
         </select>
       </div>
 
-      <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 30px 0;">
+      <hr class="section-divider">
 
       <div class="form-group">
         <label for="name">お名前 (漢字) *</label>
@@ -110,7 +110,7 @@
     
     <button type="button" id="check-btn" class="btn-submit">ご予約状況を確認する</button>
 
-    <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 30px 0;">
+    <hr class="section-divider">
     
     <div id="check-results-area">
       <div class="no-data">情報を入力して確認ボタンを押してください。</div>
