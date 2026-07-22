@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SIS Web Reservation - ver 3.9.8.1</title>
+  <title>SIS Web Reservation - ver 3.9.9</title>
   <!-- 💡 デザインファイルを外部から読み込み -->
   <link rel="stylesheet" href="style.css">
 </head>
@@ -14,7 +14,7 @@
 
 <div class="container">
   <h1>SIS WEB RESERVATION</h1>
-  <div class="subtitle">サロン予約システム (Version 3.9.8.1)</div>
+  <div class="subtitle">サロン予約システム (Version 3.9.9)</div>
 
   <div class="tabs">
     <button id="tab-btn-reserve" class="tab-btn active" data-tab="reserve-tab">新規予約</button>
@@ -89,7 +89,7 @@
 
       <div class="form-group">
         <label for="memo">ご要望・備考</label>
-        <textarea id="memo" placeholder="ご相談や、ご用件などがあればご記入ください"></textarea>
+        <textarea id="memo" placeholder="ご相談、ご用件などがあればご記入ください"></textarea>
       </div>
 
       <button type="submit" id="submit-btn" class="btn-submit" disabled>上記の内容で予約を確定する</button>
@@ -119,8 +119,11 @@
 
 </div>
 
-<!-- 💡 システム制御ファイルを外部から読み込み -->
-<script src="script.js"></script>
+<!-- 💡 システム制御ファイルを依存関係の正しい順序で外部から読み込み -->
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/api.js"></script>
+<script src="js/ui.js"></script>
 
 </body>
 </html>
